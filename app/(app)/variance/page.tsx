@@ -6,6 +6,8 @@ import EmptyState from "@/components/ui/empty-state";
 import { formatINR, formatPct } from "@/lib/utils";
 import PeriodSelector from "@/components/ui/period-selector";
 
+export const dynamic = "force-dynamic";
+
 export default async function VariancePage({
   searchParams,
 }: {

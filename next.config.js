@@ -10,6 +10,10 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  // Disable next/image optimization so local PNGs (Edme logo) work without remote-domain config.
+  images: {
+    unoptimized: true,
+  },
   experimental: { typedRoutes: false },
 };
 

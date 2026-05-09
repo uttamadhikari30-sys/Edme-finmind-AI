@@ -4,6 +4,8 @@ import Sidebar from "@/components/shell/sidebar";
 import Header from "@/components/shell/header";
 import { OrgProvider } from "@/components/shell/org-context";
 
+export const dynamic = "force-dynamic";
+
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = createClient();
   const {
