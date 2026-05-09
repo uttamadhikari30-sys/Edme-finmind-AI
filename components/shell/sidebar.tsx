@@ -15,6 +15,7 @@ const NAV: NavItem[] = [
   { id: "journal-entries", label: "Journal Entries", href: "/journal-entries", icon: "📝", section: "LEDGER" },
   { id: "reconciliation", label: "Reconciliation", href: "/reconciliation", icon: "🔗", section: "LEDGER" },
   { id: "chart-of-accounts", label: "Chart of Accounts", href: "/chart-of-accounts", icon: "📂", section: "LEDGER" },
+  { id: "users", label: "Users & Roles", href: "/users", icon: "👥", section: "ADMIN" },
   { id: "settings", label: "Settings", href: "/settings", icon: "⚙️", section: "ADMIN" },
 ];
 

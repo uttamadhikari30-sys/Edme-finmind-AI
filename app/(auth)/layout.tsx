@@ -9,69 +9,60 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         style={{ background: "linear-gradient(135deg,#050d24 0%,#0c1e50 55%,#1C3687 100%)" }}
       >
         <div
-          className="absolute inset-0 opacity-25"
+          className="absolute inset-0 opacity-30 pointer-events-none"
           style={{
             backgroundImage:
-              "radial-gradient(circle at 80% 0%, rgba(237,27,47,0.45), transparent 35%), radial-gradient(circle at 0% 100%, rgba(200,149,42,0.35), transparent 40%)",
+              "radial-gradient(circle at 80% 0%, rgba(237,27,47,0.55), transparent 35%), radial-gradient(circle at 0% 100%, rgba(200,149,42,0.4), transparent 40%), radial-gradient(circle at 100% 100%, rgba(124,58,237,0.35), transparent 45%)",
           }}
         />
-        <div className="relative z-10 flex flex-col justify-between p-12 w-full">
-          <div>
-            <Image
-              src="/edme-logo.png"
-              alt="Edme Insurance Brokers"
-              width={180}
-              height={56}
-              priority
-              className="block"
-              style={{ filter: "brightness(0) invert(1)", height: "44px", width: "auto" }}
-            />
-            <div className="mt-8 text-3xl font-serif font-bold tracking-tight">
+        <div className="relative z-10 flex flex-col justify-center px-14 py-12 w-full">
+          <Image
+            src="/edme-logo.png"
+            alt="Edme Insurance Brokers"
+            width={200}
+            height={62}
+            priority
+            style={{ filter: "brightness(0) invert(1)", height: "48px", width: "auto" }}
+          />
+
+          <div className="mt-12">
+            <div className="font-serif text-[64px] font-bold leading-[1] tracking-tight">
               FINMIND <span style={{ color: "#ED1B2F" }}>AI</span>
             </div>
-            <div className="text-[10px] tracking-[2px] uppercase text-white/40 mt-1">
-              Edme MIS Platform · v1.0
-            </div>
-          </div>
-          <div>
-            <div className="text-2xl font-serif leading-tight max-w-md">
-              Financial intelligence, in one place.
-            </div>
-            <p className="mt-3 text-sm text-white/65 max-w-md leading-relaxed">
-              Real-time P&amp;L, variance analysis, vertical performance, AOP planning and
-              board-ready insights — built for Edme Insurance Brokers Limited.
+            <p className="mt-4 text-[15px] text-white/65 max-w-md">
+              Intelligent MIS &amp; Finance Intelligence Platform
             </p>
-            <div className="mt-8 flex items-center gap-2 text-xs text-white/40">
-              <span>🔐</span> 256-bit SSL · Strictly Confidential
-            </div>
+          </div>
+
+          <div className="mt-12 max-w-md">
+            <div className="text-[14px] font-bold text-white">Edme Insurance Brokers Limited</div>
+            <p className="mt-3 text-[13px] text-white/55 leading-relaxed">
+              Enterprise-grade financial intelligence — real-time P&amp;L, FTM &amp; YTD analytics,
+              VPB calculator, and AI-powered insights across all verticals.
+            </p>
+          </div>
+
+          <div className="mt-7 flex flex-wrap gap-2">
+            <Pill>FY 2025-26</Pill>
+            <Pill>v1.0</Pill>
+            <Pill>15 Verticals</Pill>
+            <Pill>Role-based Access</Pill>
           </div>
         </div>
       </div>
 
       {/* Right form panel */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-[var(--bg)]">
-        <div className="w-full max-w-md">
-          {/* Mobile-only logo */}
-          <div className="lg:hidden mb-8 text-center">
-            <Image
-              src="/edme-logo.png"
-              alt="Edme Insurance Brokers"
-              width={140}
-              height={42}
-              priority
-              style={{ height: "36px", width: "auto" }}
-              className="mx-auto"
-            />
-            <div className="mt-3 text-2xl font-serif font-bold text-navy">
-              FINMIND <span style={{ color: "#ED1B2F" }}>AI</span>
-            </div>
-            <div className="text-[10px] tracking-[2px] uppercase text-ink-subtle mt-1">
-              Edme MIS Platform
-            </div>
-          </div>
-          {children}
-        </div>
+      <div className="flex-1 flex items-center justify-center p-6 lg:p-10 bg-[var(--bg)]">
+        <div className="w-full max-w-[480px]">{children}</div>
       </div>
     </div>
+  );
+}
+
+function Pill({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center px-3.5 py-1.5 rounded-full text-[11px] text-white/70 border border-white/15 bg-white/[0.04] backdrop-blur">
+      {children}
+    </span>
   );
 }
