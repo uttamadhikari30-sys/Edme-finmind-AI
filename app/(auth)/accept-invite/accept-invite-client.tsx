@@ -1,17 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 
 export default function AcceptInviteClient() {
   const router = useRouter();
-  const sp = useSearchParams();
   const supabase = createClient();
-  const tokenFromUrl = sp.get("token") ?? "";
-  const [token, setToken] = useState(tokenFromUrl);
+  const [token, setToken] = useState("");
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
@@ -19,23 +17,28 @@ export default function AcceptInviteClient() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
-  async function tryAcceptDirectly(theToken: string) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return false;
-    const { error } = await supabase.rpc("fn_accept_invite", { p_token: theToken });
-    if (error) {
-      setError(error.message);
-      return true;
-    }
-    router.push("/dashboard");
-    router.refresh();
-    return true;
-  }
-
+  // Read token from URL once on the client (no useSearchParams).
   useEffect(() => {
-    if (tokenFromUrl) tryAcceptDirectly(tokenFromUrl);
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const t = params.get("token") ?? "";
+    if (t) {
+      setToken(t);
+      // If user is already signed in, accept directly.
+      (async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { error } = await supabase.rpc("fn_accept_invite", { p_token: t });
+        if (error) {
+          setError(error.message);
+          return;
+        }
+        router.push("/dashboard");
+        router.refresh();
+      })();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tokenFromUrl]);
+  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();

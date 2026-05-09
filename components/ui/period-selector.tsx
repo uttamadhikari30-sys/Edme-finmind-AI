@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 export default function PeriodSelector({
   periods,
@@ -12,10 +12,10 @@ export default function PeriodSelector({
   basePath: string;
 }) {
   const router = useRouter();
-  const sp = useSearchParams();
 
   function setPeriod(id: string) {
-    const params = new URLSearchParams(sp);
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
     params.set("period", id);
     router.push(`${basePath}?${params.toString()}`);
   }
