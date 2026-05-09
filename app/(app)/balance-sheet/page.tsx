@@ -11,11 +11,11 @@ export default async function BalanceSheetPage({
 }) {
   await requireUser();
   const supabase = createClient();
-  const { data: membership } = await supabase
+  const { data: membership } = (await supabase
     .from("org_members")
     .select("org_id")
     .limit(1)
-    .single();
+    .single()) as { data: { org_id: string } | null };
   if (!membership) return null;
 
   const orgId = membership.org_id;
