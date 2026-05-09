@@ -21,7 +21,7 @@ export default function KpiCard({
     <div className="bg-white rounded-[14px] p-5 border border-[var(--border)] shadow-soft relative overflow-hidden hover:-translate-y-0.5 hover:shadow-card transition-all">
       <div className={cn("kpi-accent", tone)} />
       {emoji && (
-        <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[44px] opacity-[0.05] pointer-events-none leading-none select-none">
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[58px] opacity-[0.06] pointer-events-none leading-none select-none">
           {emoji}
         </div>
       )}

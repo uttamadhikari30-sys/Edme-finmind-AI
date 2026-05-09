@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -31,10 +32,18 @@ export default function Sidebar({ userName, userRole }: { userName: string; user
     <aside className="fm-sidebar fixed left-0 top-0 bottom-0 w-[256px] flex flex-col z-[100]">
       {/* Logo */}
       <div className="px-5 py-4 border-b border-white/[0.06]">
-        <div className="text-[20px] font-serif font-bold text-white tracking-tight leading-none">
+        <Image
+          src="/edme-logo.png"
+          alt="Edme Insurance Brokers"
+          width={160}
+          height={40}
+          priority
+          style={{ filter: "brightness(0) invert(1)", opacity: 0.93, height: "32px", width: "auto" }}
+        />
+        <div className="mt-2 text-[14px] font-serif font-bold text-white tracking-tight leading-none">
           FINMIND <span style={{ color: "#ED1B2F" }}>AI</span>
         </div>
-        <div className="text-[9px] tracking-[2px] uppercase text-white/30 mt-1.5">
+        <div className="text-[9px] tracking-[2px] uppercase text-white/30 mt-1">
           Edme MIS Platform · v1.0
         </div>
       </div>
@@ -69,7 +78,7 @@ export default function Sidebar({ userName, userRole }: { userName: string; user
                 href={item.href}
                 className={cn(
                   "fm-sb-item flex items-center gap-2.5 px-4 py-2 mx-2 rounded-lg text-[12.5px] font-medium",
-                  active ? "active" : "text-white/55",
+                  active ? "active" : "text-white/55"
                 )}
               >
                 <span className="w-4 text-center text-[14px]">{item.icon}</span>
