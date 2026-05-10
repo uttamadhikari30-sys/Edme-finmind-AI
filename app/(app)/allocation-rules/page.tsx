@@ -42,7 +42,7 @@ export default async function AllocationRulesPage() {
     <>
       <PageHeader
         title="Allocation Rules"
-        subtitle="Cost & Revenue allocation engine · split source accounts across verticals via percentage / headcount / revenue share"
+        subtitle="Cost & Revenue allocation engine · Separate rule books for MIS (actuals) and Budget/AOP (planning)"
       />
       <AllocationRulesClient
         orgId={orgId}

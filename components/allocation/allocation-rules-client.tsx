@@ -6,6 +6,8 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 import EmptyState from "@/components/ui/empty-state";
 
+type Purpose = "mis" | "aop";
+
 type Rule = {
   id: string;
   org_id: string;
@@ -16,6 +18,7 @@ type Rule = {
   is_active: boolean;
   priority: number;
   notes: string | null;
+  purpose: Purpose;
 };
 type Target = { id: string; rule_id: string; business_unit_id: string; weight: number };
 type Account = { id: string; account_code: string; account_name: string; account_type: string };
@@ -27,6 +30,19 @@ const METHODS = [
   { id: "headcount", label: "By headcount",         desc: "Auto-split by people count per vertical" },
   { id: "revenue",   label: "By revenue share",     desc: "Auto-split by revenue contribution" },
 ];
+
+const PURPOSE_INFO: Record<Purpose, { label: string; desc: string; tone: "navy" | "gold" }> = {
+  mis: {
+    label: "MIS (Actuals)",
+    desc: "Applied to posted journal entries when generating live P&L, vertical performance, and live KPIs.",
+    tone: "navy",
+  },
+  aop: {
+    label: "Budget / AOP (Planning)",
+    desc: "Applied during AOP build-out — distributes Finance Layer costs across verticals before approval.",
+    tone: "gold",
+  },
+};
 
 export default function AllocationRulesClient({
   orgId,
@@ -43,6 +59,7 @@ export default function AllocationRulesClient({
 }) {
   const router = useRouter();
   const supabase = createClient();
+  const [purpose, setPurpose] = useState<Purpose>("mis");
   const [showForm, setShowForm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -60,6 +77,9 @@ export default function AllocationRulesClient({
   }
 
   const totalWeight = Object.values(weights).reduce((s, v) => s + (v || 0), 0);
+  const filteredRules = rules.filter((r) => r.purpose === purpose);
+  const misCount = rules.filter((r) => r.purpose === "mis").length;
+  const aopCount = rules.filter((r) => r.purpose === "aop").length;
 
   async function createRule(e: React.FormEvent) {
     e.preventDefault();
@@ -87,7 +107,8 @@ export default function AllocationRulesClient({
         method: form.method,
         notes: form.notes || null,
         is_active: true,
-        priority: rules.length + 1,
+        priority: filteredRules.length + 1,
+        purpose,
       })
       .select()
       .single();
@@ -130,8 +151,71 @@ export default function AllocationRulesClient({
     router.refresh();
   }
 
+  async function copyToOtherPurpose(rule: Rule) {
+    const otherPurpose: Purpose = rule.purpose === "mis" ? "aop" : "mis";
+    const { data: copy } = await supabase
+      .from("allocation_rules")
+      .insert({
+        org_id: orgId,
+        name: `${rule.name} (copied to ${otherPurpose.toUpperCase()})`,
+        source_account: rule.source_account,
+        source_type: rule.source_type,
+        method: rule.method,
+        notes: rule.notes,
+        is_active: true,
+        priority: 100,
+        purpose: otherPurpose,
+      })
+      .select()
+      .single();
+    if (copy) {
+      const ruleTargets = targets.filter((t) => t.rule_id === rule.id);
+      if (ruleTargets.length) {
+        await supabase.from("allocation_rule_targets").insert(
+          ruleTargets.map((t) => ({
+            rule_id: copy.id,
+            business_unit_id: t.business_unit_id,
+            weight: t.weight,
+          }))
+        );
+      }
+    }
+    router.refresh();
+  }
+
   return (
     <div className="space-y-4">
+      {/* Purpose tab toggle */}
+      <Card>
+        <CardBody className="py-4 flex items-center gap-3 flex-wrap">
+          <span className="text-[10.5px] uppercase tracking-[1.5px] font-bold text-ink-subtle">
+            Rule Book
+          </span>
+          {(["mis", "aop"] as Purpose[]).map((p) => {
+            const info = PURPOSE_INFO[p];
+            const count = p === "mis" ? misCount : aopCount;
+            return (
+              <button
+                key={p}
+                onClick={() => setPurpose(p)}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 transition ${
+                  purpose === p
+                    ? `border-${info.tone === "gold" ? "gold" : "navy"} bg-white shadow-soft`
+                    : "border-[var(--border)] bg-bg-alt hover:border-navy/40"
+                }`}
+              >
+                <span className="text-[14px] font-bold text-navy">{info.label}</span>
+                <span className={`pill ${info.tone === "gold" ? "pill-gold" : "pill-navy"}`}>
+                  {count} rules
+                </span>
+              </button>
+            );
+          })}
+          <div className="flex-1" />
+          <p className="text-[11.5px] text-ink-muted max-w-md">{PURPOSE_INFO[purpose].desc}</p>
+        </CardBody>
+      </Card>
+
       {/* How it works */}
       <Card>
         <CardHeader title="How allocation works" tag={{ label: "Logic", tone: "purple" }} />
@@ -145,10 +229,10 @@ export default function AllocationRulesClient({
             ))}
           </div>
           <p className="mt-4 text-[12px] text-ink-muted leading-relaxed">
-            Rules are applied in priority order during P&amp;L generation. Each rule takes its source account&apos;s
-            balance and distributes it to the listed Business Units according to the method &amp; weights. Rules with
-            <b> direct/percent </b> methods use the weights you set; <b>headcount/revenue</b> auto-compute weights from
-            current data so you don&apos;t have to update them when team sizes change.
+            <b>MIS rules</b> apply to posted journal entries when computing live P&amp;L, KPIs, and vertical performance.{" "}
+            <b>AOP rules</b> apply during the budgeting cycle to distribute Finance Layer costs across verticals before
+            CFO/CEO approval. The two rule books can differ — for example, you might split costs equally across all
+            verticals in AOP planning but apply revenue-weighted distribution for MIS actuals.
           </p>
         </CardBody>
       </Card>
@@ -156,14 +240,16 @@ export default function AllocationRulesClient({
       {/* Add rule */}
       <Card>
         <CardHeader
-          title="Allocation Rules"
-          tag={{ label: `${rules.length} rules`, tone: "navy" }}
+          title={`${PURPOSE_INFO[purpose].label} Rules`}
+          tag={{ label: `${filteredRules.length} rules`, tone: PURPOSE_INFO[purpose].tone === "gold" ? "gold" : "navy" }}
           right={
             <button
               onClick={() => setShowForm((v) => !v)}
-              className="px-3 py-1.5 rounded-lg bg-navy text-white text-xs font-semibold hover:bg-navy-800"
+              className={`px-3 py-1.5 rounded-lg ${
+                purpose === "mis" ? "bg-navy hover:bg-navy-800" : "bg-gold hover:brightness-110"
+              } text-white text-xs font-semibold`}
             >
-              {showForm ? "Cancel" : "+ New rule"}
+              {showForm ? "Cancel" : `+ New ${purpose.toUpperCase()} rule`}
             </button>
           }
         />
@@ -283,19 +369,25 @@ export default function AllocationRulesClient({
               <button
                 type="submit"
                 disabled={busy}
-                className="px-4 py-2 rounded-lg bg-navy text-white font-semibold text-sm hover:bg-navy-800 disabled:opacity-60"
+                className={`px-4 py-2 rounded-lg text-white font-semibold text-sm disabled:opacity-60 ${
+                  purpose === "mis" ? "bg-navy hover:bg-navy-800" : "bg-gold hover:brightness-110"
+                }`}
               >
-                {busy ? "Saving…" : "Save rule"}
+                {busy ? "Saving…" : `Save ${purpose.toUpperCase()} rule`}
               </button>
             </form>
           </CardBody>
         )}
         <CardBody className="p-0">
-          {rules.length === 0 ? (
+          {filteredRules.length === 0 ? (
             <EmptyState
               icon="⚙️"
-              title="No allocation rules yet"
-              body="Create rules to automatically distribute mid/back-office costs and shared revenue across your verticals."
+              title={`No ${purpose.toUpperCase()} allocation rules yet`}
+              body={
+                purpose === "mis"
+                  ? "Create rules to distribute mid/back-office costs and shared revenue across verticals when computing live MIS."
+                  : "Create rules for the AOP planning cycle. These don't affect actuals — they only apply when consolidating Budget/AOP."
+              }
             />
           ) : (
             <table className="fm-table">
@@ -307,25 +399,21 @@ export default function AllocationRulesClient({
                   <th>Method</th>
                   <th>Targets</th>
                   <th>Status</th>
-                  <th></th>
+                  <th colSpan={2}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {rules.map((r) => {
+                {filteredRules.map((r) => {
                   const t = targets.filter((tr) => tr.rule_id === r.id);
                   const sourceAcc = accounts.find((a) => a.id === r.source_account);
                   return (
                     <tr key={r.id}>
-                      <td>
-                        <span className="pill pill-navy">#{r.priority}</span>
-                      </td>
+                      <td><span className="pill pill-navy">#{r.priority}</span></td>
                       <td className="font-semibold">{r.name}</td>
                       <td className="text-ink-muted">
                         {sourceAcc ? `${sourceAcc.account_code} · ${sourceAcc.account_name}` : `Any ${r.source_type}`}
                       </td>
-                      <td>
-                        <span className="pill pill-gold">{r.method}</span>
-                      </td>
+                      <td><span className="pill pill-gold">{r.method}</span></td>
                       <td className="text-[11px] text-ink-muted">
                         {t.length > 0
                           ? t
@@ -342,6 +430,15 @@ export default function AllocationRulesClient({
                           className={`pill ${r.is_active ? "pill-green" : "pill-red"} cursor-pointer`}
                         >
                           {r.is_active ? "Active" : "Paused"}
+                        </button>
+                      </td>
+                      <td>
+                        <button
+                          onClick={() => copyToOtherPurpose(r)}
+                          className="text-[11px] text-navy font-semibold hover:underline"
+                          title={`Duplicate to ${r.purpose === "mis" ? "AOP" : "MIS"} rule book`}
+                        >
+                          → {r.purpose === "mis" ? "AOP" : "MIS"}
                         </button>
                       </td>
                       <td>
