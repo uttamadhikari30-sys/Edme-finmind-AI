@@ -1,27 +1,33 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
-import KpiCard from "@/components/kpi/kpi-card";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import PageHeader from "@/components/ui/page-header";
+import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import MonthlyPLChart from "@/components/charts/monthly-pl-chart";
-import { formatINR, formatPct } from "@/lib/utils";
+import DashboardControls from "@/components/dashboard/dashboard-controls";
+import LiveAlertsRibbon from "@/components/dashboard/live-alerts-ribbon";
+import KpiMain, { type MainKpi } from "@/components/dashboard/kpi-main";
+import KpiSecondary, { type SecondaryKpi } from "@/components/dashboard/kpi-secondary";
+import PLWaterfall from "@/components/dashboard/pl-waterfall";
 import EmptyState from "@/components/ui/empty-state";
+import { formatUnit, formatINRUnit, formatPct } from "@/lib/utils";
+
+export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   await requireUser();
   const supabase = createClient();
 
-  const { data: membership } = await supabase
+  const { data: membership } = (await supabase
     .from("org_members")
     .select("org_id, organizations(name)")
     .limit(1)
-    .single();
+    .single()) as { data: any };
+
   if (!membership) return null;
-
   const orgId = membership.org_id;
-  const org = membership.organizations as unknown as { name: string };
+  const org = membership.organizations as { name: string };
 
-  // Get current period (today's date falls in)
+  // Current period
   const today = new Date().toISOString().slice(0, 10);
   const { data: periodToday } = await supabase
     .from("fiscal_periods")
@@ -40,6 +46,7 @@ export default async function DashboardPage() {
     kpis = data?.[0] ?? null;
   }
 
+  // Monthly trend
   const { data: monthlyRaw } = await supabase.rpc("fn_monthly_pl", { p_org_id: orgId });
   const monthly = (monthlyRaw ?? []).map((r: any) => ({
     period_label: r.period_label,
@@ -48,121 +55,274 @@ export default async function DashboardPage() {
     net_income: Number(r.net_income),
   }));
 
-  const { count: jeCount } = await supabase
-    .from("journal_entries")
-    .select("*", { count: "exact", head: true })
-    .eq("org_id", orgId);
+  // Member count for Rev/HC
+  const { count: hcCount } = await supabase
+    .from("v_org_members_with_email")
+    .select("*", { count: "exact", head: true });
+
+  // P&L breakdown for waterfall
+  let plRows: any[] = [];
+  if (periodToday) {
+    const { data } = await supabase.rpc("fn_pl_statement", {
+      p_org_id: orgId,
+      p_period_id: periodToday.id,
+    });
+    plRows = data ?? [];
+  }
+
+  const revenue = Number(kpis?.revenue ?? 0);
+  const expense = Number(kpis?.expense ?? 0);
+  const netIncome = Number(kpis?.net_income ?? 0);
+  const margin = revenue > 0 ? (netIncome / revenue) * 100 : 0;
+  const expenseRatio = revenue > 0 ? (expense / revenue) * 100 : 0;
+
+  // Estimated PAT (assume 25% effective tax)
+  const patEst = netIncome > 0 ? netIncome * 0.75 : netIncome;
+
+  const headcount = hcCount ?? 0;
+  const revPerHc = headcount > 0 ? revenue / headcount : 0;
+
+  // Year-over-year — placeholder until we have prior-year ledger
+  const yoy = 0;
+
+  // ---- Build KPI grids ----------------------------------------------------
+  const mainKpis: MainKpi[] = [
+    {
+      label: "Revenue",
+      value: formatUnit(revenue, "lakhs"),
+      unit: "L",
+      tone: "navy",
+      emoji: "💰",
+      sub: revenue > 0 ? "Posted YTD" : "No entries yet",
+    },
+    {
+      label: "EBITDA",
+      value: formatUnit(netIncome, "lakhs"),
+      unit: "L",
+      tone: netIncome >= 0 ? "green" : "red",
+      emoji: "📈",
+      sub: revenue > 0 ? `${formatPct(margin, 1)} of revenue` : "—",
+    },
+    {
+      label: "EBITDA Margin",
+      value: revenue > 0 ? `${margin.toFixed(1)}` : "—",
+      unit: revenue > 0 ? "%" : "",
+      tone: margin >= 20 ? "green" : margin >= 10 ? "gold" : "red",
+      emoji: "📊",
+      sub: revenue > 0 ? "Live · this period" : "—",
+    },
+    {
+      label: "PAT (Est.)",
+      value: formatUnit(patEst, "lakhs"),
+      unit: "L",
+      tone: patEst >= 0 ? "navy" : "red",
+      emoji: "🏆",
+      sub: "After 25% tax estimate",
+    },
+    {
+      label: "Rev / HC",
+      value: revPerHc > 0 ? formatUnit(revPerHc, "lakhs") : "—",
+      unit: revPerHc > 0 ? "L" : "",
+      tone: "purple",
+      emoji: "👥",
+      sub: `${headcount} ${headcount === 1 ? "person" : "people"}`,
+    },
+  ];
+
+  const secondaryKpis: SecondaryKpi[] = [
+    {
+      label: "Expense Ratio",
+      value: revenue > 0 ? `${expenseRatio.toFixed(1)}%` : "—",
+      sub: "Target: < 65%",
+      tone: expenseRatio > 80 ? "red" : expenseRatio > 65 ? "gold" : "green",
+    },
+    { label: "VPB Tier", value: "—", sub: "Set up VPB engine", tone: "purple" },
+    { label: "VPB Earned", value: "—", sub: "Set up VPB engine", tone: "purple" },
+    {
+      label: "YOY Revenue",
+      value: yoy ? formatPct(yoy, 1) : "—",
+      sub: yoy ? "vs prior year" : "Need prior FY data",
+      tone: "gold",
+    },
+  ];
+
+  // Live alerts — computed from real numbers
+  const alerts: { dot: "amber" | "green" | "red" | "navy"; text: string }[] = [];
+  if (revenue > 0) {
+    if (margin > 0) alerts.push({ dot: "green", text: `EBITDA margin ${margin.toFixed(1)}%` });
+    if (expenseRatio > 80)
+      alerts.push({ dot: "red", text: `Expense ratio at ${expenseRatio.toFixed(1)}% — review needed` });
+    if (kpis?.je_count_draft > 0)
+      alerts.push({ dot: "amber", text: `${kpis.je_count_draft} draft entries pending` });
+  } else {
+    alerts.push({ dot: "navy", text: "No journal entries posted yet — load data to begin" });
+  }
+
+  // Waterfall rows from P&L
+  const totalRevenue = plRows
+    .filter((r: any) => r.section === "revenue")
+    .reduce((s: number, r: any) => s + Number(r.amount), 0);
+  const totalExpense = plRows
+    .filter((r: any) => r.section === "expense")
+    .reduce((s: number, r: any) => s + Number(r.amount), 0);
+  const grossProfit = totalRevenue - totalExpense;
+
+  const waterfallRows = [
+    { label: "Revenue", value: totalRevenue, pct: 100, tone: "navy" as const, isTotal: true },
+    {
+      label: "− Total Expense",
+      value: -totalExpense,
+      pct: totalRevenue > 0 ? (totalExpense / totalRevenue) * 100 : 0,
+      tone: "red" as const,
+    },
+    {
+      label: "EBITDA",
+      value: grossProfit,
+      pct: totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0,
+      tone: grossProfit >= 0 ? ("green" as const) : ("red" as const),
+      isTotal: true,
+    },
+    {
+      label: "− Tax (Est. 25%)",
+      value: grossProfit > 0 ? -grossProfit * 0.25 : 0,
+      pct: grossProfit > 0 ? 25 : 0,
+      tone: "gold" as const,
+    },
+    {
+      label: "PAT",
+      value: patEst,
+      pct: totalRevenue > 0 ? (patEst / totalRevenue) * 100 : 0,
+      tone: patEst >= 0 ? ("green" as const) : ("red" as const),
+      isTotal: true,
+    },
+  ];
 
   return (
     <>
       <PageHeader
-        title="Dashboard"
-        subtitle={`${org.name} · ${periodToday?.period_label ?? "No active period"} · FY 2025-26`}
+        title="Company Dashboard"
+        subtitle={`FY 2025-26 · ${periodToday?.period_label ?? "—"} · ${org.name}`}
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-5">
-        <KpiCard
-          label="Revenue"
-          value={kpis ? formatINR(Number(kpis.revenue), { compact: true }) : "—"}
-          tone="navy"
-          emoji="₹"
-          vs="Current period"
-        />
-        <KpiCard
-          label="Expense"
-          value={kpis ? formatINR(Number(kpis.expense), { compact: true }) : "—"}
-          tone="red"
-          emoji="📉"
-          vs="Current period"
-        />
-        <KpiCard
-          label="Net Income"
-          value={kpis ? formatINR(Number(kpis.net_income), { compact: true }) : "—"}
-          tone={kpis && Number(kpis.net_income) >= 0 ? "green" : "red"}
-          emoji="💎"
-          vs={kpis ? `Margin ${formatPct(Number(kpis.gross_margin_pct), 1)}` : ""}
-        />
-        <KpiCard
-          label="Journal Entries"
-          value={jeCount?.toString() ?? "0"}
-          tone="gold"
-          emoji="📝"
-          vs={kpis ? `${kpis.je_count_posted} posted · ${kpis.je_count_draft} draft` : ""}
-        />
-      </div>
+      <DashboardControls periodLabel={periodToday?.period_label ?? "—"} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-5">
-        <div className="lg:col-span-2">
+      <LiveAlertsRibbon alerts={alerts} />
+
+      <KpiMain kpis={mainKpis} />
+      <KpiSecondary kpis={secondaryKpis} />
+
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-4">
+        <div className="lg:col-span-3">
           <Card>
-            <CardHeader title="Revenue, Expense & Net Income — by Month" tag={{ label: "Posted only", tone: "navy" }} />
+            <CardHeader
+              title="Revenue & Expense Trend"
+              tag={{ label: "Posted only", tone: "navy" }}
+            />
             <CardBody>
+              <p className="text-[10.5px] text-ink-subtle mb-3 -mt-1">
+                Monthly · Actuals (AOP / PY layers come once budget data loads)
+              </p>
               <MonthlyPLChart data={monthly} />
             </CardBody>
           </Card>
         </div>
+        <div className="lg:col-span-2">
+          <PLWaterfall rows={waterfallRows} periodLabel={periodToday?.period_label ?? "—"} />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader
+              title="🤖 FINMIND Intelligence — Maya"
+              tag={{ label: "AI", tone: "purple" }}
+            />
+            <CardBody>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <Insight
+                  tone="info"
+                  title="Books Status"
+                  body={
+                    kpis
+                      ? `${kpis.je_count_posted ?? 0} entries posted · ${kpis.je_count_draft ?? 0} drafts`
+                      : "No entries yet — load demo data or post your first entry."
+                  }
+                />
+                <Insight
+                  tone={margin >= 20 ? "good" : margin >= 10 ? "info" : "warn"}
+                  title="Margin Health"
+                  body={
+                    revenue > 0
+                      ? `Net margin sitting at ${margin.toFixed(1)}% on ${formatINRUnit(revenue)} revenue.`
+                      : "Pending data."
+                  }
+                />
+                <Insight
+                  tone={expenseRatio > 80 ? "warn" : "good"}
+                  title="Cost Discipline"
+                  body={
+                    revenue > 0
+                      ? `Expense ratio is ${expenseRatio.toFixed(1)}% — ${
+                          expenseRatio > 80 ? "above" : "within"
+                        } healthy thresholds.`
+                      : "Pending data."
+                  }
+                />
+              </div>
+            </CardBody>
+          </Card>
+        </div>
         <Card>
-          <CardHeader title="🤖 FINMIND Intelligence" tag={{ label: "AI", tone: "purple" }} />
+          <CardHeader title="Get Started" />
           <CardBody>
-            <div className="space-y-3">
-              <Insight
-                tone="info"
-                title="Books status"
-                body={
-                  kpis
-                    ? `${kpis.je_count_posted} entries posted this period — net income ${formatINR(Number(kpis.net_income), { compact: true })}.`
-                    : "Set up the current fiscal period to see live insights."
-                }
+            {revenue > 0 ? (
+              <div className="text-[12.5px] text-ink-muted leading-relaxed">
+                You have <b>{kpis.je_count_posted}</b> posted entries this period. Drill into{" "}
+                <a className="text-navy font-semibold hover:underline" href="/pl">P&amp;L</a>,{" "}
+                <a className="text-navy font-semibold hover:underline" href="/cash-flow">Cash Flow</a> or{" "}
+                <a className="text-navy font-semibold hover:underline" href="/variance">Variance</a> for deeper analysis.
+              </div>
+            ) : (
+              <EmptyState
+                icon="📝"
+                title="No data yet"
+                body="Post a journal entry or load the demo seed SQL to populate this dashboard."
+                cta={{ label: "New journal entry", href: "/journal-entries/new" }}
               />
-              <Insight
-                tone="good"
-                title="Quick wins"
-                body="Reconcile bank accounts weekly to keep your trial balance trustworthy."
-              />
-              <Insight
-                tone="warn"
-                title="Watch list"
-                body={kpis && Number(kpis.expense_ratio_pct) > 80
-                  ? `Expense ratio is ${formatPct(Number(kpis.expense_ratio_pct), 1)} — investigate the top expense accounts.`
-                  : "Expense ratios are within healthy thresholds."}
-              />
-            </div>
+            )}
           </CardBody>
         </Card>
       </div>
-
-      <Card>
-        <CardHeader title="Get started" />
-        <CardBody>
-          {jeCount === 0 ? (
-            <EmptyState
-              icon="📝"
-              title="Post your first journal entry"
-              body="Once you post entries, your dashboard, P&L, and variance reports will populate automatically."
-              cta={{ label: "New journal entry", href: "/journal-entries/new" }}
-            />
-          ) : (
-            <div className="text-sm text-ink-muted">
-              You have {jeCount} entries on file. Visit{" "}
-              <a className="text-navy font-semibold" href="/pl">P&amp;L Statement</a> or{" "}
-              <a className="text-navy font-semibold" href="/variance">Variance Analysis</a> for deeper views.
-            </div>
-          )}
-        </CardBody>
-      </Card>
     </>
   );
 }
 
-function Insight({ tone, title, body }: { tone: "good" | "warn" | "info"; title: string; body: string }) {
+function Insight({
+  tone,
+  title,
+  body,
+}: {
+  tone: "good" | "warn" | "info";
+  title: string;
+  body: string;
+}) {
   const styles = {
-    good: "border-edgreen/20 bg-edgreen-50/40 text-edgreen",
-    warn: "border-edred/20 bg-edred-50/40 text-edred",
-    info: "border-navy/15 bg-navy-50/40 text-navy",
+    good: "border-edgreen/25 bg-edgreen-50/50",
+    warn: "border-edred/25 bg-edred-50/50",
+    info: "border-navy/15 bg-navy-50/40",
+  } as const;
+  const labelColor = {
+    good: "text-edgreen",
+    warn: "text-edred",
+    info: "text-navy",
   } as const;
   return (
     <div className={`rounded-xl border p-3 ${styles[tone]}`}>
-      <div className="text-[11px] font-bold uppercase tracking-wider">{title}</div>
-      <div className="text-[12px] text-ink-muted mt-1 leading-relaxed">{body}</div>
+      <div className={`text-[10.5px] font-bold uppercase tracking-wider ${labelColor[tone]}`}>
+        {title}
+      </div>
+      <div className="text-[11.5px] text-ink-muted mt-1 leading-relaxed">{body}</div>
     </div>
   );
 }

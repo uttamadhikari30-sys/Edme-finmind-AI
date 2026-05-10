@@ -5,6 +5,8 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+export type CurrencyUnit = "actual" | "lakhs" | "crores" | "millions";
+
 export function formatINR(value: number, opts: { compact?: boolean } = {}) {
   if (value == null || isNaN(value)) return "—";
   if (opts.compact) {
@@ -19,6 +21,30 @@ export function formatINR(value: number, opts: { compact?: boolean } = {}) {
     currency: "INR",
     maximumFractionDigits: 0,
   }).format(value);
+}
+
+/** Format value into a chosen Indian unit. Returns just the formatted number — caller adds ₹ + unit suffix. */
+export function formatUnit(value: number, unit: CurrencyUnit = "lakhs"): string {
+  if (value == null || isNaN(value)) return "—";
+  switch (unit) {
+    case "actual":
+      return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(value);
+    case "lakhs":
+      return (value / 1e5).toFixed(0);
+    case "crores":
+      return (value / 1e7).toFixed(2);
+    case "millions":
+      return (value / 1e6).toFixed(1);
+  }
+}
+
+export function unitSuffix(unit: CurrencyUnit): string {
+  return { actual: "", lakhs: "L", crores: "Cr", millions: "M" }[unit];
+}
+
+export function formatINRUnit(value: number, unit: CurrencyUnit = "lakhs") {
+  if (value == null || isNaN(value)) return "—";
+  return `₹${formatUnit(value, unit)} ${unitSuffix(unit)}`.trim();
 }
 
 export function formatNumber(value: number, decimals = 0) {

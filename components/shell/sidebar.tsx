@@ -10,12 +10,15 @@ type NavItem = { id: string; label: string; href: string; icon: string; section:
 const NAV: NavItem[] = [
   { id: "dashboard", label: "Dashboard", href: "/dashboard", icon: "⬛", section: "OVERVIEW" },
   { id: "pl", label: "P&L Statement", href: "/pl", icon: "📋", section: "REPORTS" },
-  { id: "balance-sheet", label: "Balance Sheet", href: "/balance-sheet", icon: "🏛", section: "REPORTS" },
-  { id: "variance", label: "Variance Analysis", href: "/variance", icon: "📈", section: "REPORTS" },
+  { id: "mom", label: "Month-on-Month P&L", href: "/mom", icon: "📅", section: "REPORTS" },
+  { id: "cash-flow", label: "Cash Flow", href: "/cash-flow", icon: "💵", section: "REPORTS" },
+  { id: "variance", label: "Variance Analysis", href: "/variance", icon: "📈", section: "ANALYTICS" },
+  { id: "vertical", label: "Vertical Performance", href: "/vertical", icon: "👥", section: "ANALYTICS" },
+  { id: "vpb", label: "Variable Pay (VPB)", href: "/vpb", icon: "💜", section: "ANALYTICS" },
   { id: "journal-entries", label: "Journal Entries", href: "/journal-entries", icon: "📝", section: "LEDGER" },
   { id: "reconciliation", label: "Reconciliation", href: "/reconciliation", icon: "🔗", section: "LEDGER" },
   { id: "chart-of-accounts", label: "Chart of Accounts", href: "/chart-of-accounts", icon: "📂", section: "LEDGER" },
-  { id: "users", label: "Users & Roles", href: "/users", icon: "👥", section: "ADMIN" },
+  { id: "users", label: "Users & Roles", href: "/users", icon: "👤", section: "ADMIN" },
   { id: "settings", label: "Settings", href: "/settings", icon: "⚙️", section: "ADMIN" },
 ];
 
