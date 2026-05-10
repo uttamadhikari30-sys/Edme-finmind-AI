@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import CurrencySelector from "@/components/shell/currency-selector";
 
 export default function Header({
   title,
@@ -33,6 +34,8 @@ export default function Header({
       </div>
 
       <div className="flex-1" />
+
+      <CurrencySelector />
 
       {/* Maya AI chip */}
       <button className="hidden md:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-br from-navy to-navy-500 text-white text-[11.5px] font-semibold shadow-soft hover:shadow-card transition">
