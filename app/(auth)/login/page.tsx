@@ -6,22 +6,12 @@ import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 
-type Role = "cfo" | "ceo" | "bh" | "finance";
 type Mode = "password" | "otp";
-
-const ROLES: { id: Role; label: string; sub: string; icon: string }[] = [
-  { id: "cfo",     label: "CFO",           sub: "Full access",     icon: "👑" },
-  { id: "ceo",     label: "CEO",           sub: "Executive",       icon: "🎯" },
-  { id: "bh",      label: "Business Head", sub: "My vertical",     icon: "📊" },
-  { id: "finance", label: "Finance",       sub: "MIS & Reports",   icon: "📋" },
-];
 
 export default function LoginPage() {
   const router = useRouter();
   const supabase = createClient();
-  const [role, setRole] = useState<Role>("cfo");
   const [mode, setMode] = useState<Mode>("password");
-  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPwd, setShowPwd] = useState(false);
@@ -42,14 +32,13 @@ export default function LoginPage() {
       router.push("/dashboard");
       router.refresh();
     } else {
-      // OTP / magic link
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
       });
       setLoading(false);
       if (error) return setError(error.message);
-      setInfo(`Magic link sent to ${email}. Check your inbox and click the link to sign in.`);
+      setInfo(`One-time login link sent to ${email}. Check your inbox.`);
     }
   }
 
@@ -59,66 +48,21 @@ export default function LoginPage() {
         <Image
           src="/edme-logo.png"
           alt="Edme"
-          width={120}
+          width={140}
           height={36}
           priority
-          style={{ height: "30px", width: "auto" }}
+          style={{ height: "32px", width: "auto" }}
           className="mx-auto"
         />
-        <h1 className="mt-4 font-serif text-[26px] font-bold text-navy leading-tight">Welcome Back</h1>
+        <h1 className="mt-5 font-serif text-[26px] font-bold text-navy leading-tight">Welcome Back</h1>
         <p className="text-[13px] text-ink-muted mt-1">
           Edme Insurance Brokers Limited · FINMIND AI
         </p>
       </div>
 
-      <div className="my-5 border-t border-[var(--border-2)]" />
+      <div className="my-6 border-t border-[var(--border-2)]" />
 
-      {/* Role selector */}
-      <div>
-        <div className="text-[10.5px] font-bold uppercase tracking-[1.5px] text-ink-subtle mb-2.5">
-          Select your role
-        </div>
-        <div className="grid grid-cols-4 gap-2">
-          {ROLES.map((r) => {
-            const active = role === r.id;
-            return (
-              <button
-                key={r.id}
-                type="button"
-                onClick={() => setRole(r.id)}
-                className={[
-                  "rounded-xl border-2 px-2 py-3 text-center transition cursor-pointer",
-                  active
-                    ? "border-navy bg-navy-50/40 shadow-soft"
-                    : "border-[var(--border)] bg-white hover:border-navy/40 hover:bg-navy-50/20",
-                ].join(" ")}
-              >
-                <div className="text-[20px] leading-none">{r.icon}</div>
-                <div className={`mt-1.5 text-[12px] font-bold ${active ? "text-navy" : "text-ink"}`}>
-                  {r.label}
-                </div>
-                <div className="text-[10px] text-ink-subtle mt-0.5">{r.sub}</div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <form onSubmit={onSubmit} className="mt-5 space-y-4">
-        <Field label="Full name">
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-subtle text-[13px]">👤</span>
-            <input
-              type="text"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              autoComplete="name"
-              className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] pl-9 pr-3 py-2.5 text-sm focus:border-navy focus:bg-white outline-none"
-              placeholder="e.g. Praveen Ladia"
-            />
-          </div>
-        </Field>
-
+      <form onSubmit={onSubmit} className="space-y-4">
         <Field label="Email">
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-subtle text-[13px]">✉️</span>
@@ -129,7 +73,7 @@ export default function LoginPage() {
               required
               autoComplete="email"
               className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] pl-9 pr-3 py-2.5 text-sm focus:border-navy focus:bg-white outline-none"
-              placeholder="you@edmebrokers.com"
+              placeholder="you@edmeinsurance.com"
             />
           </div>
         </Field>
@@ -155,7 +99,7 @@ export default function LoginPage() {
             label="Password"
             right={
               <Link href="/forgot-password" className="text-[10.5px] text-navy hover:underline font-semibold">
-                Forgot?
+                Forgot Password
               </Link>
             }
           >
@@ -202,24 +146,12 @@ export default function LoginPage() {
         >
           {loading
             ? mode === "password" ? "Signing in…" : "Sending link…"
-            : <>Sign in to FINMIND AI <span className="ml-1">→</span></>
-          }
+            : <>Sign in to FINMIND AI <span className="ml-1">→</span></>}
         </button>
       </form>
 
       <div className="mt-5 text-center text-[11px] text-ink-subtle">
         🔐 256-bit SSL · Edme Insurance Brokers Limited · Strictly Confidential
-      </div>
-
-      <div className="mt-4 text-[11px] text-ink-subtle text-center">
-        Don&apos;t have an account?{" "}
-        <Link href="/signup" className="text-navy font-semibold hover:underline">
-          Create one
-        </Link>{" "}
-        · Got an invite?{" "}
-        <Link href="/accept-invite" className="text-navy font-semibold hover:underline">
-          Accept here
-        </Link>
       </div>
     </div>
   );
