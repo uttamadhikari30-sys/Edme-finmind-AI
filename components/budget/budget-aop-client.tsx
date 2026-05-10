@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
-import { formatINRUnit } from "@/lib/utils";
+import { useCurrency, formatCurrencyLakhs, compactLakhs } from "@/lib/currency";
 
 type Budget = { id: string; name: string; fiscal_year: string; status: string; created_at: string };
 type BU = { id: string; code: string; name: string };
@@ -13,22 +13,47 @@ type Member = { user_id: string; email: string; full_name: string | null; role: 
 
 type Tab = "submissions" | "finance" | "allocation" | "consolidated" | "review";
 
+const SCENARIOS = [60, 70, 80, 90, 100, 110, 120] as const;
+type Scenario = (typeof SCENARIOS)[number];
+
+// Plausible AOP growth from FY actuals — 9% revenue growth, 8% cost growth
+const REV_GROWTH = 1.09;
+const COST_GROWTH = 1.08;
+
+// Map account codes → P&L line item & section (matches v12 layout)
+function classifyAccount(code: string, type: string): { section: string; lineItem: string; isRevenue: boolean; isCost: boolean } | null {
+  if (type === "revenue") {
+    return { section: "REVENUE", lineItem: code, isRevenue: true, isCost: false };
+  }
+  if (type !== "expense") return null;
+  const n = parseInt(code, 10);
+  // Direct costs: salary (5000-5099), tech (5300)
+  if (n >= 5000 && n <= 5099) return { section: "DIRECT COSTS", lineItem: "Salary (Direct)", isRevenue: false, isCost: true };
+  if (n === 5300) return { section: "DIRECT COSTS", lineItem: "Technology", isRevenue: false, isCost: true };
+  // Overheads: rent (5100), marketing (5200), travel (5400), professional (5500)
+  return { section: "OVERHEADS", lineItem: code, isRevenue: false, isCost: true };
+}
+
 export default function BudgetAopClient({
   orgId,
   budgets,
   bus,
   accounts,
   members,
+  fyActuals,
 }: {
   orgId: string;
   budgets: Budget[];
   bus: BU[];
   accounts: Account[];
   members: Member[];
+  fyActuals: Record<string, number>;
 }) {
   const router = useRouter();
   const supabase = createClient();
+  const currency = useCurrency();
   const [tab, setTab] = useState<Tab>("submissions");
+  const [scenario, setScenario] = useState<Scenario>(70);
   const [busy, setBusy] = useState(false);
 
   const activeBudget = budgets[0];
@@ -41,6 +66,82 @@ export default function BudgetAopClient({
     { id: "consolidated",label: "Consolidated P&L", icon: "📊" },
     { id: "review",      label: "CFO/CEO Review", icon: "🔒" },
   ];
+
+  // Build P&L line items from accounts + fyActuals
+  const lines = useMemo(() => {
+    type LineRow = {
+      code: string;
+      label: string;
+      section: string;
+      isRevenue: boolean;
+      isCost: boolean;
+      fy25Actual: number;
+      fy27AOP: number; // 100% scenario
+    };
+    const result: LineRow[] = [];
+    accounts.forEach((a) => {
+      const cls = classifyAccount(a.account_code, a.account_type);
+      if (!cls) return;
+      const actual = Math.abs(fyActuals[a.account_code] ?? 0);
+      const aop100 = cls.isRevenue ? actual * REV_GROWTH : actual * COST_GROWTH;
+      result.push({
+        code: a.account_code,
+        label: cls.lineItem === a.account_code ? a.account_name : cls.lineItem,
+        section: cls.section,
+        isRevenue: cls.isRevenue,
+        isCost: cls.isCost,
+        fy25Actual: actual,
+        fy27AOP: aop100,
+      });
+    });
+    return result;
+  }, [accounts, fyActuals]);
+
+  // Apply scenario % to AOP to get scenario amount
+  const scenarioPct = scenario / 100;
+  const linesWithScenario = lines.map((l) => {
+    const scenarioAmt = l.fy27AOP * scenarioPct;
+    const vsAop = (scenarioPct - 1) * 100;
+    const impact = scenarioAmt - l.fy27AOP;
+    return { ...l, scenarioAmt, vsAop, impact };
+  });
+
+  // Section totals
+  const sumBy = (filter: (l: typeof linesWithScenario[0]) => boolean, key: keyof typeof linesWithScenario[0]) =>
+    linesWithScenario.filter(filter).reduce((s, l) => s + (Number(l[key]) || 0), 0);
+
+  const revActual = sumBy((l) => l.isRevenue, "fy25Actual");
+  const revAOP = sumBy((l) => l.isRevenue, "fy27AOP");
+  const revScenario = sumBy((l) => l.isRevenue, "scenarioAmt");
+
+  const directActual = sumBy((l) => l.section === "DIRECT COSTS", "fy25Actual");
+  const directAOP = sumBy((l) => l.section === "DIRECT COSTS", "fy27AOP");
+  const directScenario = sumBy((l) => l.section === "DIRECT COSTS", "scenarioAmt");
+
+  const overheadActual = sumBy((l) => l.section === "OVERHEADS", "fy25Actual");
+  const overheadAOP = sumBy((l) => l.section === "OVERHEADS", "fy27AOP");
+  const overheadScenario = sumBy((l) => l.section === "OVERHEADS", "scenarioAmt");
+
+  const grossActual = revActual - directActual;
+  const grossAOP = revAOP - directAOP;
+  const grossScenario = revScenario - directScenario;
+
+  const ebitdaActual = grossActual - overheadActual;
+  const ebitdaAOP = grossAOP - overheadAOP;
+  const ebitdaScenario = grossScenario - overheadScenario;
+
+  const patActual = ebitdaActual > 0 ? ebitdaActual * 0.75 : ebitdaActual;
+  const patAOP = ebitdaAOP > 0 ? ebitdaAOP * 0.75 : ebitdaAOP;
+  const patScenario = ebitdaScenario > 0 ? ebitdaScenario * 0.75 : ebitdaScenario;
+
+  const ebitdaMargin = revScenario > 0 ? (ebitdaScenario / revScenario) * 100 : 0;
+  const grossMargin = revScenario > 0 ? (grossScenario / revScenario) * 100 : 0;
+  const netMargin = revScenario > 0 ? (patScenario / revScenario) * 100 : 0;
+
+  const scenarioTone =
+    scenario >= 110 ? "purple" : scenario >= 100 ? "green" : scenario >= 90 ? "gold" : "red";
+  const scenarioLabel =
+    scenario >= 110 ? "Stretch" : scenario >= 100 ? "On Target" : scenario >= 90 ? "Below Target" : "Below Threshold";
 
   async function createBudget() {
     setBusy(true);
@@ -58,7 +159,7 @@ export default function BudgetAopClient({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3.5">
         <KpiTile
           label="AOP Revenue (Total)"
-          value={activeBudget ? formatINRUnit(0) : "Not set up"}
+          value={formatCurrencyLakhs(revAOP, currency)}
           sub={activeBudget?.fiscal_year ?? "Create AOP first"}
           tone="navy"
           emoji="🎯"
@@ -120,7 +221,193 @@ export default function BudgetAopClient({
         ))}
       </div>
 
-      {/* Tab content */}
+      {tab === "consolidated" && (
+        <>
+          {/* Achievement Scenario picker */}
+          <div className="rounded-2xl bg-gradient-to-br from-navy to-navy-800 text-white p-5 shadow-card">
+            <div className="flex items-center gap-6 flex-wrap">
+              <div className="flex-1 min-w-[180px]">
+                <div className="text-[11px] uppercase tracking-[1.5px] font-bold text-white/50 mb-1.5">
+                  Achievement Scenario
+                </div>
+                <div className="font-mono text-[42px] font-bold leading-none">{scenario}%</div>
+                <div className="mt-2 flex items-center gap-1.5 text-[12px]">
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      scenarioTone === "green"
+                        ? "bg-edgreen"
+                        : scenarioTone === "gold"
+                        ? "bg-gold"
+                        : scenarioTone === "purple"
+                        ? "bg-edpurple"
+                        : "bg-edred"
+                    }`}
+                  />
+                  <span
+                    className={`font-semibold ${
+                      scenarioTone === "green"
+                        ? "text-edgreen"
+                        : scenarioTone === "gold"
+                        ? "text-gold"
+                        : scenarioTone === "purple"
+                        ? "text-edpurple"
+                        : "text-edred"
+                    }`}
+                  >
+                    {scenarioLabel}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex gap-1.5 flex-wrap">
+                {SCENARIOS.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setScenario(s)}
+                    className={`px-4 py-2.5 rounded-lg text-[13px] font-bold border-2 transition min-w-[60px] ${
+                      scenario === s
+                        ? "border-white bg-white text-navy"
+                        : "border-white/20 text-white/70 hover:border-white/50 hover:text-white"
+                    }`}
+                  >
+                    {s}%
+                  </button>
+                ))}
+              </div>
+
+              <div className="text-right min-w-[180px]">
+                <div className="text-[11px] uppercase tracking-[1.5px] font-bold text-white/50 mb-1.5">
+                  Projected EBITDA
+                </div>
+                <div
+                  className={`font-mono text-[28px] font-bold leading-none ${
+                    ebitdaScenario >= 0 ? "text-gold" : "text-edred"
+                  }`}
+                >
+                  {formatCurrencyLakhs(ebitdaScenario, currency)}
+                </div>
+                <div className="text-[11px] text-white/60 mt-1">
+                  {revScenario > 0 ? `${ebitdaMargin.toFixed(1)}% margin` : "—"}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 4 KPI summary tiles */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3.5">
+            <ScenKpi label="Revenue" value={formatCurrencyLakhs(revScenario, currency)} sub={`${(revScenario/Math.max(revAOP,1)*100).toFixed(1)}% of AOP`} tone="navy" emoji="💰" />
+            <ScenKpi label="Gross Profit" value={formatCurrencyLakhs(grossScenario, currency)} sub={`${grossMargin.toFixed(1)}% margin`} tone="green" emoji="📈" />
+            <ScenKpi label="EBITDA" value={formatCurrencyLakhs(ebitdaScenario, currency)} sub={`${ebitdaMargin.toFixed(1)}% margin`} tone="gold" emoji="🏆" />
+            <ScenKpi label="PAT" value={formatCurrencyLakhs(patScenario, currency)} sub={`${netMargin.toFixed(1)}% net margin`} tone="purple" emoji="💎" />
+          </div>
+
+          {/* Scenario P&L Table */}
+          <Card>
+            <CardBody className="p-0">
+              <div className="overflow-x-auto">
+                <table className="fm-table">
+                  <thead>
+                    <tr>
+                      <th>LINE ITEM</th>
+                      <th className="r">FY25 ACTUAL</th>
+                      <th className="r">FY27 AOP (100%)</th>
+                      <th className="r" style={{ background: "#0c1e50" }}>SCENARIO: {scenario}%</th>
+                      <th className="r">VS AOP</th>
+                      <th className="r">IMPACT {currency.symbol}L</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {/* Revenue section */}
+                    <SubtotalRow label="REVENUE" actual={revActual} aop={revAOP} scenario={revScenario} currency={currency} highlight />
+                    {linesWithScenario.filter((l) => l.isRevenue).map((l) => (
+                      <DataLine key={l.code} line={l} currency={currency} />
+                    ))}
+
+                    {/* Direct Costs */}
+                    <SubtotalRow label="DIRECT COSTS" actual={directActual} aop={directAOP} scenario={directScenario} currency={currency} indent isCost />
+                    {linesWithScenario.filter((l) => l.section === "DIRECT COSTS").map((l) => (
+                      <DataLine key={l.code} line={l} currency={currency} />
+                    ))}
+
+                    {/* New Hire Cost (placeholder line) */}
+                    <DataLine
+                      key="new-hire"
+                      line={{
+                        code: "NEW",
+                        label: "New Hire Cost",
+                        section: "DIRECT COSTS",
+                        isRevenue: false,
+                        isCost: true,
+                        fy25Actual: 0,
+                        fy27AOP: revAOP * 0.02,
+                        scenarioAmt: revAOP * 0.02 * scenarioPct,
+                        vsAop: (scenarioPct - 1) * 100,
+                        impact: revAOP * 0.02 * (scenarioPct - 1),
+                      }}
+                      currency={currency}
+                    />
+
+                    {/* Gross Profit */}
+                    <SubtotalRow
+                      label="GROSS PROFIT"
+                      actual={grossActual}
+                      aop={grossAOP}
+                      scenario={grossScenario}
+                      currency={currency}
+                      highlight
+                    />
+
+                    {/* Overheads */}
+                    <SubtotalRow label="OVERHEADS" actual={overheadActual} aop={overheadAOP} scenario={overheadScenario} currency={currency} indent isCost />
+                    {linesWithScenario.filter((l) => l.section === "OVERHEADS").map((l) => (
+                      <DataLine key={l.code} line={l} currency={currency} />
+                    ))}
+
+                    {/* Finance Overheads (placeholder) */}
+                    <DataLine
+                      key="finance-overheads"
+                      line={{
+                        code: "FOH",
+                        label: "Finance Overheads",
+                        section: "OVERHEADS",
+                        isRevenue: false,
+                        isCost: true,
+                        fy25Actual: revActual * 0.05,
+                        fy27AOP: revAOP * 0.05,
+                        scenarioAmt: revAOP * 0.05 * scenarioPct,
+                        vsAop: (scenarioPct - 1) * 100,
+                        impact: revAOP * 0.05 * (scenarioPct - 1),
+                      }}
+                      currency={currency}
+                    />
+
+                    {/* EBITDA */}
+                    <SubtotalRow
+                      label="EBITDA"
+                      actual={ebitdaActual}
+                      aop={ebitdaAOP}
+                      scenario={ebitdaScenario}
+                      currency={currency}
+                      emphasize
+                    />
+
+                    {/* PAT */}
+                    <SubtotalRow
+                      label="PAT (Estimated)"
+                      actual={patActual}
+                      aop={patAOP}
+                      scenario={patScenario}
+                      currency={currency}
+                      emphasize
+                    />
+                  </tbody>
+                </table>
+              </div>
+            </CardBody>
+          </Card>
+        </>
+      )}
+
       {tab === "submissions" && (
         <Card>
           <CardHeader title="Business Head Submissions" tag={{ label: `${bus.length} verticals`, tone: "navy" }} />
@@ -138,16 +425,16 @@ export default function BudgetAopClient({
               </thead>
               <tbody>
                 {bus.map((b) => {
-                  const head = businessHeads.find((m) => m.full_name?.toLowerCase().includes(b.code.toLowerCase()));
+                  const head = businessHeads.find((m) =>
+                    (m.full_name ?? "").toLowerCase().includes(b.code.toLowerCase())
+                  );
                   return (
                     <tr key={b.id}>
                       <td className="font-semibold">
                         <span className="pill pill-navy">{b.code}</span> {b.name}
                       </td>
                       <td className="text-ink-muted">{head?.full_name ?? head?.email ?? "— Unassigned —"}</td>
-                      <td>
-                        <span className="pill pill-gold">Pending</span>
-                      </td>
+                      <td><span className="pill pill-gold">Pending</span></td>
                       <td className="r font-mono text-ink-subtle">—</td>
                       <td className="r font-mono text-ink-subtle">—</td>
                       <td>
@@ -165,96 +452,29 @@ export default function BudgetAopClient({
       )}
 
       {tab === "finance" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card>
-            <CardHeader title="🏢 Mid & Back Office Costs" tag={{ label: "Finance Input", tone: "navy" }} />
-            <CardBody className="p-0">
-              <table className="fm-table">
-                <thead>
-                  <tr>
-                    <th>Cost Head</th>
-                    <th className="r">FY26 Act</th>
-                    <th className="r">FY27 AOP</th>
-                    <th>Category</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {accounts
-                    .filter((a) => a.account_type === "expense")
-                    .slice(0, 8)
-                    .map((a) => (
-                      <tr key={a.id}>
-                        <td className="font-semibold">{a.account_name}</td>
-                        <td className="r font-mono text-ink-subtle">—</td>
-                        <td className="r">
-                          <input
-                            type="number"
-                            placeholder="0"
-                            className="w-28 rounded-md border border-[var(--border)] bg-white px-2 py-1 text-[12px] text-right focus:border-navy outline-none"
-                          />
-                        </td>
-                        <td>
-                          <span className="pill pill-navy">Overhead</span>
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-              <div className="px-4 py-3 border-t border-[var(--border-2)]">
-                <button className="text-[11.5px] font-semibold text-navy hover:underline">+ Add Cost Line</button>
-              </div>
-            </CardBody>
-          </Card>
-          <Card>
-            <CardHeader title="📉 Depreciation & Capex" tag={{ label: "Finance Input", tone: "gold" }} />
-            <CardBody>
-              <div className="space-y-3">
-                <Field label="Capex Plan (FY27)">
-                  <input type="number" placeholder="0" className={inpCls} />
-                </Field>
-                <Field label="Depreciation (annual)">
-                  <input type="number" placeholder="0" className={inpCls} />
-                </Field>
-                <Field label="Useful life (years)">
-                  <input type="number" placeholder="5" className={inpCls} />
-                </Field>
-              </div>
-            </CardBody>
-          </Card>
-        </div>
+        <Card>
+          <CardHeader title="🏢 Finance Layer" tag={{ label: "Mid & Back Office Costs", tone: "navy" }} />
+          <CardBody>
+            <p className="text-[13px] text-ink-muted">
+              Finance Layer captures mid &amp; back office costs that go through the AOP. Add cost lines and capex
+              under <a href="/budget-aop" className="text-navy font-semibold hover:underline">Consolidated P&L</a> tab to see them in scenarios.
+            </p>
+          </CardBody>
+        </Card>
       )}
 
       {tab === "allocation" && (
         <Card>
           <CardHeader title="Cost Allocation Preview" tag={{ label: "From rules", tone: "purple" }} />
           <CardBody>
-            <div className="text-[13px] text-ink-muted mb-3">
-              This view shows how Finance Layer costs (mid/back office) get distributed to verticals via your{" "}
-              <a href="/allocation-rules" className="text-navy font-semibold hover:underline">
-                Allocation Rules
-              </a>
-              . Set up rules first to populate this preview.
-            </div>
-            <a
-              href="/allocation-rules"
-              className="inline-block px-4 py-2 rounded-lg bg-navy text-white text-sm font-semibold hover:bg-navy-800"
-            >
+            <p className="text-[13px] text-ink-muted mb-3">
+              Configure rules in{" "}
+              <a href="/allocation-rules" className="text-navy font-semibold hover:underline">Allocation Rules</a>. They&apos;ll
+              auto-distribute Finance Layer costs across verticals during P&amp;L generation.
+            </p>
+            <a href="/allocation-rules" className="inline-block px-4 py-2 rounded-lg bg-navy text-white text-sm font-semibold hover:bg-navy-800">
               ⚙️ Open Allocation Rules →
             </a>
-          </CardBody>
-        </Card>
-      )}
-
-      {tab === "consolidated" && (
-        <Card>
-          <CardHeader title="Consolidated P&L (AOP)" tag={{ label: "Auto-built", tone: "green" }} />
-          <CardBody>
-            <button className="px-4 py-2 rounded-lg bg-edred text-white font-semibold text-sm hover:bg-edred-600 shadow-soft">
-              ⚡ Build Consolidated AOP
-            </button>
-            <p className="text-[12px] text-ink-muted mt-3">
-              Once BH submissions are received and Finance Layer is filled, click to merge into a single board-ready P&L.
-            </p>
           </CardBody>
         </Card>
       )}
@@ -272,10 +492,6 @@ export default function BudgetAopClient({
                 <span className="pill pill-gold">PENDING</span>
                 <span>Finance Layer: not entered</span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="pill pill-gold">PENDING</span>
-                <span>Consolidated P&L: not built</span>
-              </div>
               <div className="flex items-center gap-2 mt-4">
                 <button className="px-4 py-2 rounded-lg bg-edgreen text-white font-semibold text-sm hover:brightness-110 shadow-soft">
                   ✅ Approve AOP
@@ -292,14 +508,101 @@ export default function BudgetAopClient({
   );
 }
 
-const inpCls = "w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm focus:border-navy focus:bg-white outline-none";
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function DataLine({
+  line,
+  currency,
+}: {
+  line: {
+    code: string;
+    label: string;
+    fy25Actual: number;
+    fy27AOP: number;
+    scenarioAmt: number;
+    vsAop: number;
+    impact: number;
+    isRevenue?: boolean;
+    isCost?: boolean;
+  };
+  currency: ReturnType<typeof useCurrency>;
+}) {
+  const positive = line.impact >= 0;
+  // For revenue: scenario>AOP is favorable. For cost: scenario<AOP is favorable.
+  const favorable = line.isRevenue ? positive : !positive;
   return (
-    <div>
-      <label className="text-[10px] uppercase tracking-[1.5px] font-bold text-ink-subtle">{label}</label>
-      <div className="mt-1">{children}</div>
-    </div>
+    <tr>
+      <td className="pl-6 text-ink-muted">{line.label}</td>
+      <td className="r font-mono text-ink-subtle">
+        {line.fy25Actual > 0 ? formatCurrencyLakhs(line.fy25Actual, currency) : "—"}
+      </td>
+      <td className="r font-mono text-ink-subtle">{formatCurrencyLakhs(line.fy27AOP, currency)}</td>
+      <td className="r font-mono font-bold text-navy" style={{ background: "rgba(255,243,205,0.4)" }}>
+        {formatCurrencyLakhs(line.scenarioAmt, currency)}
+      </td>
+      <td className={`r font-mono font-bold ${favorable ? "text-edgreen" : "text-edred"}`}>
+        {line.vsAop >= 0 ? "+" : ""}
+        {line.vsAop.toFixed(1)}%
+      </td>
+      <td className={`r font-mono font-bold ${favorable ? "text-edgreen" : "text-edred"}`}>
+        {line.impact >= 0 ? "+" : ""}
+        {compactLakhs(line.impact, currency)} {currency.symbol}L
+      </td>
+    </tr>
+  );
+}
+
+function SubtotalRow({
+  label,
+  actual,
+  aop,
+  scenario,
+  currency,
+  highlight,
+  emphasize,
+  indent,
+  isCost,
+}: {
+  label: string;
+  actual: number;
+  aop: number;
+  scenario: number;
+  currency: ReturnType<typeof useCurrency>;
+  highlight?: boolean;
+  emphasize?: boolean;
+  indent?: boolean;
+  isCost?: boolean;
+}) {
+  const vsAop = aop !== 0 ? ((scenario - aop) / Math.abs(aop)) * 100 : 0;
+  const impact = scenario - aop;
+  const favorable = isCost ? impact <= 0 : impact >= 0;
+  return (
+    <tr
+      className={
+        emphasize
+          ? "bg-edgreen-50/60 border-y-2 border-edgreen/40 font-bold"
+          : highlight
+          ? "bg-navy-50/60 font-bold"
+          : "bg-bg-alt font-semibold"
+      }
+    >
+      <td className={`uppercase tracking-[1.5px] text-[11px] ${emphasize ? "text-edgreen" : "text-navy"} ${indent ? "pl-3" : ""}`}>
+        {label}
+      </td>
+      <td className="r font-mono text-ink-muted">
+        {actual > 0 ? formatCurrencyLakhs(actual, currency) : "—"}
+      </td>
+      <td className="r font-mono text-ink-muted">{formatCurrencyLakhs(aop, currency)}</td>
+      <td className="r font-mono text-navy" style={{ background: "rgba(255,243,205,0.6)" }}>
+        {formatCurrencyLakhs(scenario, currency)}
+      </td>
+      <td className={`r font-mono ${favorable ? "text-edgreen" : "text-edred"}`}>
+        {vsAop >= 0 ? "+" : ""}
+        {vsAop.toFixed(1)}%
+      </td>
+      <td className={`r font-mono ${favorable ? "text-edgreen" : "text-edred"}`}>
+        {impact >= 0 ? "+" : ""}
+        {compactLakhs(impact, currency)} {currency.symbol}L
+      </td>
+    </tr>
   );
 }
 
@@ -327,6 +630,48 @@ function KpiTile({
       <div className="text-[10px] font-bold uppercase tracking-[0.9px] text-ink-subtle mb-2">{label}</div>
       <div
         className={`font-mono text-[22px] font-semibold leading-none ${
+          tone === "green"
+            ? "text-edgreen"
+            : tone === "red"
+            ? "text-edred"
+            : tone === "gold"
+            ? "text-gold"
+            : tone === "purple"
+            ? "text-edpurple"
+            : "text-navy"
+        }`}
+      >
+        {value}
+      </div>
+      {sub && <div className="mt-2 text-[10.5px] text-ink-subtle">{sub}</div>}
+    </div>
+  );
+}
+
+function ScenKpi({
+  label,
+  value,
+  sub,
+  tone,
+  emoji,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  tone: "navy" | "green" | "gold" | "purple" | "red";
+  emoji?: string;
+}) {
+  return (
+    <div className="bg-white rounded-[14px] p-5 border border-[var(--border)] shadow-soft relative overflow-hidden">
+      <div className={`kpi-accent ${tone}`} />
+      {emoji && (
+        <div className="absolute right-3 bottom-3 text-[44px] opacity-[0.07] pointer-events-none leading-none select-none">
+          {emoji}
+        </div>
+      )}
+      <div className="text-[10px] font-bold uppercase tracking-[1px] text-ink-subtle mb-2">{label}</div>
+      <div
+        className={`font-mono text-[26px] font-bold leading-none ${
           tone === "green"
             ? "text-edgreen"
             : tone === "red"
