@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { useCurrency, formatCurrencyLakhs } from "@/lib/currency";
+import MoMTrendChart from "@/components/mom/mom-trend-chart";
+import MoMDetailedPL from "@/components/mom/mom-detailed-pl";
 
 type Period = { id: string; period_label: string; start_date: string; end_date: string; status: string };
 type Monthly = {
@@ -13,6 +15,7 @@ type Monthly = {
   net_income: number;
 };
 type BU = { id: string; code: string; name: string };
+type Bucket = Record<string, Record<string, number>>;
 
 const VPB_POOL_PCT = 4.2 / 100; // 4.2% of revenue → VPB pool
 
@@ -29,11 +32,17 @@ export default function MoMTrackerClient({
   monthly,
   monthlyBudget,
   bus,
+  revenueByAccount,
+  expenseByAccount,
+  aopByAccount,
 }: {
   periods: Period[];
   monthly: Monthly[];
   monthlyBudget: Record<string, number>;
   bus: BU[];
+  revenueByAccount: Bucket;
+  expenseByAccount: Bucket;
+  aopByAccount: Bucket;
 }) {
   const currency = useCurrency();
   const today = new Date().toISOString().slice(0, 10);
@@ -230,6 +239,40 @@ export default function MoMTrackerClient({
         Earned VPB = Pool × Tier %. Set up budget in{" "}
         <a href="/budget-aop" className="text-navy font-semibold hover:underline">Budget / AOP</a> to populate AOP and Rev% columns.
       </div>
+
+      {/* Monthly Revenue vs Expense Trend chart */}
+      <MoMTrendChart
+        revenueData={periods.map((p) => {
+          const data = monthlyByPeriod.get(p.id);
+          const isFuture = p.end_date > today;
+          const isCurrent = p.start_date <= today && p.end_date >= today;
+          return {
+            month: p.period_label.split(" ")[0]!,
+            value: Math.round(Number(data?.revenue ?? 0) / 1e5),
+            isFuture,
+            isCurrent,
+          };
+        })}
+        expenseData={periods.map((p) => {
+          const data = monthlyByPeriod.get(p.id);
+          const isFuture = p.end_date > today;
+          const isCurrent = p.start_date <= today && p.end_date >= today;
+          return {
+            month: p.period_label.split(" ")[0]!,
+            value: Math.round(Number(data?.expense ?? 0) / 1e5),
+            isFuture,
+            isCurrent,
+          };
+        })}
+      />
+
+      {/* Month-on-Month Detailed P&L */}
+      <MoMDetailedPL
+        periods={periods}
+        revenueByAccount={revenueByAccount}
+        expenseByAccount={expenseByAccount}
+        aopByAccount={aopByAccount}
+      />
     </div>
   );
 }
