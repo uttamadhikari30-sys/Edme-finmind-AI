@@ -1,8 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import PageHeader from "@/components/ui/page-header";
-import { formatINRUnit, formatPct, delta as pctDelta } from "@/lib/utils";
+import MoMTrackerClient from "@/components/mom/mom-tracker-client";
 
 export const dynamic = "force-dynamic";
 
@@ -16,72 +15,56 @@ export default async function MoMPLPage() {
     .limit(1)
     .single()) as { data: { org_id: string } | null };
   if (!membership) return null;
+  const orgId = membership.org_id;
 
-  const { data: rows } = await supabase.rpc("fn_monthly_pl", { p_org_id: membership.org_id });
-  const months = (rows ?? []).map((r: any) => ({
-    period_label: r.period_label,
-    revenue: Number(r.revenue),
-    expense: Number(r.expense),
-    net_income: Number(r.net_income),
-  }));
+  const { data: periods } = await supabase
+    .from("fiscal_periods")
+    .select("id, period_label, start_date, end_date, status")
+    .eq("org_id", orgId)
+    .order("start_date");
+
+  const { data: monthly } = await supabase.rpc("fn_monthly_pl", { p_org_id: orgId });
+
+  // Optional budget for AOP comparison
+  const { data: budgets } = await supabase
+    .from("budgets")
+    .select("id")
+    .eq("org_id", orgId)
+    .limit(1);
+  let monthlyBudget: Record<string, number> = {};
+  if (budgets?.[0]) {
+    const { data: bl } = await supabase
+      .from("budget_lines")
+      .select(`
+        amount, period_id,
+        chart_of_accounts!inner(account_type)
+      `)
+      .eq("budget_id", budgets[0].id);
+    (bl ?? []).forEach((row: any) => {
+      if (row.chart_of_accounts.account_type === "revenue") {
+        monthlyBudget[row.period_id] = (monthlyBudget[row.period_id] ?? 0) + Number(row.amount);
+      }
+    });
+  }
+
+  const { data: bus } = await supabase
+    .from("business_units")
+    .select("id, code, name")
+    .eq("org_id", orgId)
+    .order("code");
 
   return (
     <>
       <PageHeader
         title="Month-on-Month P&L"
-        subtitle="Period-over-period comparison · all posted journal entries"
+        subtitle="Track all 12 months · Revenue & Expense Trends · FY 2025-26"
       />
-
-      <Card>
-        <CardHeader title="Monthly summary" tag={{ label: `${months.length} periods`, tone: "navy" }} />
-        <CardBody className="p-0">
-          {months.length === 0 ? (
-            <div className="px-5 py-8 text-center text-sm text-ink-subtle">
-              No data yet. Post journal entries to populate this view.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="fm-table">
-                <thead>
-                  <tr>
-                    <th>Period</th>
-                    <th className="r">Revenue</th>
-                    <th className="r">Expense</th>
-                    <th className="r">Net Income</th>
-                    <th className="r">Margin %</th>
-                    <th className="r">Δ vs Prev</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {months.map((m: any, i: number) => {
-                    const margin = m.revenue > 0 ? (m.net_income / m.revenue) * 100 : 0;
-                    const prev = i > 0 ? months[i - 1] : null;
-                    const dRev = prev ? pctDelta(m.revenue, prev.revenue) : 0;
-                    return (
-                      <tr key={m.period_label}>
-                        <td className="font-semibold">{m.period_label}</td>
-                        <td className="r font-mono">{formatINRUnit(m.revenue)}</td>
-                        <td className="r font-mono">{formatINRUnit(m.expense)}</td>
-                        <td
-                          className={`r font-mono font-bold ${
-                            m.net_income >= 0 ? "text-edgreen" : "text-edred"
-                          }`}
-                        >
-                          {formatINRUnit(m.net_income)}
-                        </td>
-                        <td className="r font-mono">{m.revenue > 0 ? `${margin.toFixed(1)}%` : "—"}</td>
-                        <td className={`r font-mono font-bold ${dRev > 0 ? "text-edgreen" : dRev < 0 ? "text-edred" : "text-ink-subtle"}`}>
-                          {prev ? formatPct(dRev, 1) : "—"}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardBody>
-      </Card>
+      <MoMTrackerClient
+        periods={periods ?? []}
+        monthly={(monthly as any[]) ?? []}
+        monthlyBudget={monthlyBudget}
+        bus={bus ?? []}
+      />
     </>
   );
 }

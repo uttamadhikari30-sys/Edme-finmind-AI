@@ -1,9 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import PageHeader from "@/components/ui/page-header";
-import EmptyState from "@/components/ui/empty-state";
-import { formatINRUnit } from "@/lib/utils";
+import VerticalMatrixClient from "@/components/vertical/vertical-matrix-client";
 
 export const dynamic = "force-dynamic";
 
@@ -18,98 +16,98 @@ export default async function VerticalPage() {
   if (!membership) return null;
   const orgId = membership.org_id;
 
-  const { data: bus } = await supabase
-    .from("business_units")
-    .select("id, code, name")
-    .eq("org_id", orgId)
-    .order("code");
+  const [{ data: bus }, { data: members }] = await Promise.all([
+    supabase
+      .from("business_units")
+      .select("id, code, name, manager_user_id")
+      .eq("org_id", orgId)
+      .order("code"),
+    supabase
+      .from("v_org_members_with_email")
+      .select("user_id, full_name, email, role"),
+  ]);
 
-  // Aggregate posted JE lines by business unit
+  // Posted JE lines bucketed by BU + account_type
   const { data: jelRows } = await supabase
     .from("journal_entry_lines")
     .select(`
       debit_amount, credit_amount, business_unit_id,
       chart_of_accounts!inner(account_type),
-      journal_entries!inner(status, org_id)
+      journal_entries!inner(status, org_id, period_id)
     `)
     .eq("journal_entries.status", "posted")
     .eq("journal_entries.org_id", orgId);
 
-  const byBu = new Map<string, { revenue: number; expense: number }>();
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: currentPeriod } = await supabase
+    .from("fiscal_periods")
+    .select("id, period_label")
+    .eq("org_id", orgId)
+    .lte("start_date", today)
+    .gte("end_date", today)
+    .maybeSingle();
+
+  // Aggregate per BU
+  type Aggr = { revenue: number; expense: number; revAOP: number };
+  const byBu = new Map<string, Aggr>();
   (jelRows ?? []).forEach((row: any) => {
     const buId: string | null = row.business_unit_id;
     if (!buId) return;
     const t = row.chart_of_accounts?.account_type;
-    const existing = byBu.get(buId) ?? { revenue: 0, expense: 0 };
-    if (t === "revenue") existing.revenue += Number(row.credit_amount) - Number(row.debit_amount);
-    if (t === "expense") existing.expense += Number(row.debit_amount) - Number(row.credit_amount);
-    byBu.set(buId, existing);
+    const cur = byBu.get(buId) ?? { revenue: 0, expense: 0, revAOP: 0 };
+    if (t === "revenue") cur.revenue += Number(row.credit_amount) - Number(row.debit_amount);
+    if (t === "expense") cur.expense += Number(row.debit_amount) - Number(row.credit_amount);
+    byBu.set(buId, cur);
   });
+
+  // Optional budget (AOP) per BU for revenue
+  const { data: budgets } = await supabase
+    .from("budgets")
+    .select("id")
+    .eq("org_id", orgId)
+    .limit(1);
+
+  if (budgets?.[0]) {
+    const { data: bl } = await supabase
+      .from("budget_lines")
+      .select(`
+        amount, business_unit_id,
+        chart_of_accounts!inner(account_type)
+      `)
+      .eq("budget_id", budgets[0].id);
+    (bl ?? []).forEach((row: any) => {
+      if (!row.business_unit_id) return;
+      if (row.chart_of_accounts.account_type === "revenue") {
+        const cur = byBu.get(row.business_unit_id) ?? { revenue: 0, expense: 0, revAOP: 0 };
+        cur.revAOP += Number(row.amount);
+        byBu.set(row.business_unit_id, cur);
+      }
+    });
+  }
 
   const verticals = (bus ?? []).map((b: any) => {
-    const v = byBu.get(b.id) ?? { revenue: 0, expense: 0 };
+    const v = byBu.get(b.id) ?? { revenue: 0, expense: 0, revAOP: 0 };
+    const manager = (members ?? []).find((m: any) => m.user_id === b.manager_user_id);
     return {
+      id: b.id,
       code: b.code,
       name: b.name,
-      revenue: v.revenue,
-      expense: v.expense,
-      margin: v.revenue > 0 ? ((v.revenue - v.expense) / v.revenue) * 100 : 0,
-      net: v.revenue - v.expense,
+      headName: manager?.full_name ?? `${b.name} Lead`,
+      hc: 0, // headcount per vertical — placeholder until we track it
+      ...v,
     };
   });
-
-  const totalRev = verticals.reduce((s, v) => s + v.revenue, 0);
 
   return (
     <>
       <PageHeader
-        title="Vertical Performance"
-        subtitle="Revenue, expense, and margin by business unit · all posted entries"
+        title="Vertical Performance Matrix"
+        subtitle="All Business Heads · Revenue, EBITDA, VPB & Comparisons"
       />
-
-      <Card>
-        <CardHeader title="Verticals" tag={{ label: `${verticals.length} units`, tone: "navy" }} />
-        <CardBody className="p-0">
-          {verticals.length === 0 ? (
-            <EmptyState title="No verticals" body="Verticals are seeded automatically during onboarding." />
-          ) : (
-            <table className="fm-table">
-              <thead>
-                <tr>
-                  <th>Code</th>
-                  <th>Vertical</th>
-                  <th className="r">Revenue</th>
-                  <th className="r">Expense</th>
-                  <th className="r">Net</th>
-                  <th className="r">Margin %</th>
-                  <th className="r">Share %</th>
-                </tr>
-              </thead>
-              <tbody>
-                {verticals
-                  .slice()
-                  .sort((a, b) => b.revenue - a.revenue)
-                  .map((v) => {
-                    const share = totalRev > 0 ? (v.revenue / totalRev) * 100 : 0;
-                    return (
-                      <tr key={v.code}>
-                        <td><span className="pill pill-navy">{v.code}</span></td>
-                        <td className="font-semibold">{v.name}</td>
-                        <td className="r font-mono">{formatINRUnit(v.revenue)}</td>
-                        <td className="r font-mono">{formatINRUnit(v.expense)}</td>
-                        <td className={`r font-mono font-bold ${v.net >= 0 ? "text-edgreen" : "text-edred"}`}>
-                          {formatINRUnit(v.net)}
-                        </td>
-                        <td className="r font-mono">{v.revenue > 0 ? `${v.margin.toFixed(1)}%` : "—"}</td>
-                        <td className="r font-mono text-ink-subtle">{share.toFixed(1)}%</td>
-                      </tr>
-                    );
-                  })}
-              </tbody>
-            </table>
-          )}
-        </CardBody>
-      </Card>
+      <VerticalMatrixClient
+        verticals={verticals}
+        currentPeriodLabel={currentPeriod?.period_label ?? "—"}
+      />
     </>
   );
 }
