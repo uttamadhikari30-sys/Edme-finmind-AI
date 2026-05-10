@@ -5,11 +5,11 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import MonthlyPLChart from "@/components/charts/monthly-pl-chart";
 import DashboardControls from "@/components/dashboard/dashboard-controls";
 import LiveAlertsRibbon from "@/components/dashboard/live-alerts-ribbon";
-import KpiMain, { type MainKpi } from "@/components/dashboard/kpi-main";
+import DashboardKpisClient, { type DashKpi } from "@/components/dashboard/dashboard-kpis-client";
 import KpiSecondary, { type SecondaryKpi } from "@/components/dashboard/kpi-secondary";
 import PLWaterfall from "@/components/dashboard/pl-waterfall";
 import EmptyState from "@/components/ui/empty-state";
-import { formatUnit, formatINRUnit, formatPct } from "@/lib/utils";
+import { formatPct } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -86,43 +86,40 @@ export default async function DashboardPage() {
   const yoy = 0;
 
   // ---- Build KPI grids ----------------------------------------------------
-  const mainKpis: MainKpi[] = [
+  const mainKpis: DashKpi[] = [
     {
       label: "Revenue",
-      value: formatUnit(revenue, "lakhs"),
-      unit: "L",
+      inrValue: revenue,
       tone: "navy",
       emoji: "💰",
       sub: revenue > 0 ? "Posted YTD" : "No entries yet",
     },
     {
       label: "EBITDA",
-      value: formatUnit(netIncome, "lakhs"),
-      unit: "L",
+      inrValue: netIncome,
       tone: netIncome >= 0 ? "green" : "red",
       emoji: "📈",
       sub: revenue > 0 ? `${formatPct(margin, 1)} of revenue` : "—",
     },
     {
       label: "EBITDA Margin",
-      value: revenue > 0 ? `${margin.toFixed(1)}` : "—",
-      unit: revenue > 0 ? "%" : "",
+      inrValue: 0,
+      rawDisplay: revenue > 0 ? `${margin.toFixed(1)}%` : "—",
       tone: margin >= 20 ? "green" : margin >= 10 ? "gold" : "red",
       emoji: "📊",
       sub: revenue > 0 ? "Live · this period" : "—",
     },
     {
       label: "PAT (Est.)",
-      value: formatUnit(patEst, "lakhs"),
-      unit: "L",
+      inrValue: patEst,
       tone: patEst >= 0 ? "navy" : "red",
       emoji: "🏆",
       sub: "After 25% tax estimate",
     },
     {
       label: "Rev / HC",
-      value: revPerHc > 0 ? formatUnit(revPerHc, "lakhs") : "—",
-      unit: revPerHc > 0 ? "L" : "",
+      inrValue: revPerHc,
+      rawDisplay: revPerHc > 0 ? undefined : "—",
       tone: "purple",
       emoji: "👥",
       sub: `${headcount} ${headcount === 1 ? "person" : "people"}`,
@@ -208,7 +205,7 @@ export default async function DashboardPage() {
 
       <LiveAlertsRibbon alerts={alerts} />
 
-      <KpiMain kpis={mainKpis} />
+      <DashboardKpisClient kpis={mainKpis} />
       <KpiSecondary kpis={secondaryKpis} />
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-4">
