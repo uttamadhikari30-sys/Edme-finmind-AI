@@ -6,21 +6,21 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 
 const ROLES = [
-  { id: "owner",   label: "Owner",       desc: "Full control of the workspace" },
-  { id: "cfo",     label: "CFO",         desc: "Admin: full data + user management" },
-  { id: "ceo",     label: "CEO",         desc: "Read-only across all data + board reports" },
-  { id: "finance", label: "Finance",     desc: "Post entries, reconcile, generate reports" },
+  { id: "owner",   label: "Owner",         desc: "Full control of the workspace" },
+  { id: "cfo",     label: "CFO",           desc: "Admin: full data + user management" },
+  { id: "ceo",     label: "CEO",           desc: "Read-only across all data + board reports" },
+  { id: "finance", label: "Finance",       desc: "Post entries, reconcile, generate reports" },
   { id: "bh",      label: "Business Head", desc: "Vertical-scoped view + AOP submission" },
-  { id: "viewer",  label: "Viewer",      desc: "Read-only across the workspace" },
+  { id: "viewer",  label: "Viewer",        desc: "Read-only across the workspace" },
 ];
 
-const ROLE_TONE: Record<string, string> = {
-  owner: "pill-navy",
-  cfo: "pill-navy",
-  ceo: "pill-gold",
-  finance: "pill-green",
-  bh: "pill-navy",
-  viewer: "pill-gold",
+const ROLE_TONE: Record<string, "navy" | "green" | "red" | "gold"> = {
+  owner: "navy",
+  cfo: "navy",
+  ceo: "gold",
+  finance: "green",
+  bh: "navy",
+  viewer: "gold",
 };
 
 type Member = {
@@ -59,27 +59,76 @@ export default function UsersClient({
   const [inv, setInv] = useState({ email: "", full_name: "", role: "finance" });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [createdLink, setCreatedLink] = useState<string | null>(null);
+  const [success, setSuccess] = useState<{ email: string; link: string; emailSent: boolean } | null>(null);
 
   async function createInvite(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setErr(null);
-    setCreatedLink(null);
-    const { data, error } = await supabase
+    setSuccess(null);
+
+    const cleanEmail = inv.email.trim().toLowerCase();
+
+    // 1. Insert the invite record (this carries the role + token)
+    const { data: invite, error } = await supabase
       .from("org_invites")
-      .insert({ org_id: orgId, email: inv.email.trim().toLowerCase(), full_name: inv.full_name || null, role: inv.role })
+      .insert({
+        org_id: orgId,
+        email: cleanEmail,
+        full_name: inv.full_name || null,
+        role: inv.role,
+      })
       .select()
       .single();
-    setBusy(false);
-    if (error) {
-      setErr(error.message);
+
+    if (error || !invite) {
+      setBusy(false);
+      setErr(error?.message ?? "Could not create invite");
       return;
     }
-    const link = `${window.location.origin}/accept-invite?token=${data.token}`;
-    setCreatedLink(link);
+
+    const link = `${window.location.origin}/accept-invite?token=${invite.token}`;
+
+    // 2. Trigger Supabase to send a one-time login email (magic link / OTP)
+    //    Supabase will create the auth user on first click of the link.
+    //    The link redirects to our /accept-invite page which auto-binds the role.
+    const { error: otpErr } = await supabase.auth.signInWithOtp({
+      email: cleanEmail,
+      options: {
+        shouldCreateUser: true,
+        emailRedirectTo: link,
+        data: { full_name: inv.full_name || null },
+      },
+    });
+
+    setBusy(false);
+    setSuccess({
+      email: cleanEmail,
+      link,
+      emailSent: !otpErr,
+    });
     setInv({ email: "", full_name: "", role: "finance" });
     router.refresh();
+  }
+
+  async function resendOtp(invite: Invite) {
+    setBusy(true);
+    setErr(null);
+    const link = `${window.location.origin}/accept-invite?token=${invite.token}`;
+    const { error } = await supabase.auth.signInWithOtp({
+      email: invite.email,
+      options: {
+        shouldCreateUser: true,
+        emailRedirectTo: link,
+        data: { full_name: invite.full_name },
+      },
+    });
+    setBusy(false);
+    if (error) {
+      setErr(`Resend failed: ${error.message}`);
+    } else {
+      setSuccess({ email: invite.email, link, emailSent: true });
+    }
   }
 
   async function changeRole(member: Member, newRole: string) {
@@ -149,7 +198,7 @@ export default function UsersClient({
                     required
                     value={inv.email}
                     onChange={(e) => setInv({ ...inv, email: e.target.value })}
-                    placeholder="teammate@edmebrokers.com"
+                    placeholder="teammate@edmeinsurance.com"
                     className={inpCls}
                   />
                 </Field>
@@ -176,31 +225,41 @@ export default function UsersClient({
                 <button
                   type="submit"
                   disabled={busy}
-                  className="rounded-lg bg-navy text-white px-4 py-2.5 text-sm font-semibold hover:bg-navy-800 disabled:opacity-60"
+                  className="rounded-lg bg-edred text-white px-4 py-2.5 text-sm font-semibold hover:bg-edred-600 disabled:opacity-60 shadow-soft"
                 >
-                  {busy ? "Creating…" : "Create invite"}
+                  {busy ? "Sending…" : "✉ Invite & send OTP"}
                 </button>
               </form>
 
-              {createdLink && (
-                <div className="mt-4 rounded-lg bg-edgreen-50 border border-edgreen/30 px-3 py-3">
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-edgreen mb-1">
-                    Invite created — share this link
+              {success && (
+                <div className="mt-4 rounded-xl bg-edgreen-50 border border-edgreen/30 px-4 py-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xl">{success.emailSent ? "📬" : "🔗"}</span>
+                    <div className="text-[13px] font-bold text-edgreen">
+                      {success.emailSent
+                        ? `One-time login email sent to ${success.email}`
+                        : `Invite created — share this link manually with ${success.email}`}
+                    </div>
+                  </div>
+                  {success.emailSent && (
+                    <div className="text-[11.5px] text-ink-muted mb-3">
+                      They&apos;ll receive an email with a one-click link. Clicking it signs them in
+                      and adds them to your workspace with the selected role.
+                    </div>
+                  )}
+                  <div className="text-[10.5px] uppercase tracking-wider font-bold text-edgreen mb-1.5">
+                    Backup link (valid until accepted)
                   </div>
                   <div className="flex items-center gap-2">
-                    <code className="flex-1 text-[11.5px] bg-white border border-edgreen/30 rounded px-2 py-1.5 font-mono break-all">
-                      {createdLink}
+                    <code className="flex-1 text-[11px] bg-white border border-edgreen/30 rounded px-2 py-1.5 font-mono break-all">
+                      {success.link}
                     </code>
                     <button
-                      onClick={() => navigator.clipboard?.writeText(createdLink!)}
+                      onClick={() => navigator.clipboard?.writeText(success.link)}
                       className="text-[11px] font-semibold px-2.5 py-1.5 rounded bg-edgreen text-white hover:brightness-110"
                     >
                       Copy
                     </button>
-                  </div>
-                  <div className="text-[11px] text-ink-muted mt-2">
-                    Send this link to the teammate. They&apos;ll set their password and be added to your workspace
-                    with the <b>{inv.role}</b> role automatically.
                   </div>
                 </div>
               )}
@@ -221,19 +280,29 @@ export default function UsersClient({
                   <th>Name</th>
                   <th>Role</th>
                   <th>Created</th>
-                  <th>Link</th>
-                  <th></th>
+                  <th colSpan={3}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {invites.map((i) => {
-                  const link = `${typeof window !== "undefined" ? window.location.origin : ""}/accept-invite?token=${i.token}`;
+                  const link = typeof window !== "undefined"
+                    ? `${window.location.origin}/accept-invite?token=${i.token}`
+                    : "";
                   return (
                     <tr key={i.id}>
                       <td>{i.email}</td>
                       <td className="text-ink-muted">{i.full_name ?? "—"}</td>
-                      <td><span className={`pill ${ROLE_TONE[i.role] || "pill-navy"}`}>{i.role}</span></td>
+                      <td><span className={`pill pill-${ROLE_TONE[i.role] || "navy"}`}>{i.role}</span></td>
                       <td className="text-ink-muted">{new Date(i.created_at).toLocaleDateString()}</td>
+                      <td>
+                        <button
+                          onClick={() => resendOtp(i)}
+                          disabled={busy}
+                          className="text-[11px] text-navy font-semibold hover:underline disabled:opacity-50"
+                        >
+                          Resend email
+                        </button>
+                      </td>
                       <td>
                         <button
                           onClick={() => navigator.clipboard?.writeText(link)}
@@ -244,7 +313,10 @@ export default function UsersClient({
                         </button>
                       </td>
                       <td>
-                        <button onClick={() => revokeInvite(i.id)} className="text-[11px] text-edred font-semibold hover:underline">
+                        <button
+                          onClick={() => revokeInvite(i.id)}
+                          className="text-[11px] text-edred font-semibold hover:underline"
+                        >
                           Revoke
                         </button>
                       </td>
@@ -288,7 +360,7 @@ export default function UsersClient({
                         ))}
                       </select>
                     ) : (
-                      <span className={`pill ${ROLE_TONE[m.role] || "pill-navy"}`}>{m.role}</span>
+                      <span className={`pill pill-${ROLE_TONE[m.role] || "navy"}`}>{m.role}</span>
                     )}
                   </td>
                   <td className="text-ink-muted">
@@ -311,7 +383,8 @@ export default function UsersClient({
   );
 }
 
-const inpCls = "w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm focus:border-navy focus:bg-white outline-none";
+const inpCls =
+  "w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm focus:border-navy focus:bg-white outline-none";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
