@@ -1,5 +1,3 @@
-import Image from "next/image";
-
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen flex items-stretch">
@@ -16,13 +14,18 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           }}
         />
         <div className="relative z-10 flex flex-col justify-center px-14 py-12 w-full">
-          <Image
+          {/* Plain img tag — preserves aspect ratio (2500:600 ≈ 4.17:1) exactly */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src="/edme-logo.png"
             alt="Edme Insurance Brokers"
-            width={200}
-            height={62}
-            priority
-            style={{ filter: "brightness(0) invert(1)", height: "48px", width: "auto" }}
+            style={{
+              height: "44px",
+              width: "auto",
+              maxWidth: "200px",
+              objectFit: "contain",
+              filter: "brightness(0) invert(1)",
+            }}
           />
 
           <div className="mt-12">

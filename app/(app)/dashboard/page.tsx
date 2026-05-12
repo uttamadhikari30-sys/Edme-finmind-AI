@@ -8,6 +8,7 @@ import LiveAlertsRibbon from "@/components/dashboard/live-alerts-ribbon";
 import DashboardKpisClient, { type DashKpi } from "@/components/dashboard/dashboard-kpis-client";
 import KpiSecondary, { type SecondaryKpi } from "@/components/dashboard/kpi-secondary";
 import PLWaterfall from "@/components/dashboard/pl-waterfall";
+import HeroStrip from "@/components/dashboard/hero-strip";
 import EmptyState from "@/components/ui/empty-state";
 import { formatPct } from "@/lib/utils";
 
@@ -19,13 +20,21 @@ export default async function DashboardPage() {
 
   const { data: membership } = (await supabase
     .from("org_members")
-    .select("org_id, organizations(name)")
+    .select("org_id, full_name, organizations(name)")
     .limit(1)
     .single()) as { data: any };
 
   if (!membership) return null;
   const orgId = membership.org_id;
   const org = membership.organizations as { name: string };
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const displayName =
+    (membership.full_name as string | null) ||
+    (user?.user_metadata?.full_name as string | undefined) ||
+    user?.email?.split("@")[0] ||
+    "Team";
 
   // Current period
   const today = new Date().toISOString().slice(0, 10);
@@ -196,9 +205,14 @@ export default async function DashboardPage() {
 
   return (
     <>
-      <PageHeader
-        title="Company Dashboard"
-        subtitle={`FY 2025-26 · ${periodToday?.period_label ?? "—"} · ${org.name}`}
+      <HeroStrip
+        orgName={org.name}
+        periodLabel={periodToday?.period_label ?? "—"}
+        userName={displayName}
+        revenueInr={revenue}
+        ebitdaInr={netIncome}
+        marginPct={margin}
+        jeCount={kpis?.je_count_posted ?? 0}
       />
 
       <DashboardControls periodLabel={periodToday?.period_label ?? "—"} />

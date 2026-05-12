@@ -46,6 +46,57 @@ export default function MayaPanel({ open, onClose }: { open: boolean; onClose: (
   const scrollRef = useRef<HTMLDivElement>(null);
   const wakeActiveRef = useRef(false);
   const questionModeRef = useRef(false);
+  const voicesReadyRef = useRef(false);
+
+  // Pre-load voice list (some browsers populate it async)
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
+    const load = () => {
+      window.speechSynthesis.getVoices();
+      voicesReadyRef.current = true;
+    };
+    load();
+    window.speechSynthesis.addEventListener?.("voiceschanged", load);
+    return () => window.speechSynthesis.removeEventListener?.("voiceschanged", load);
+  }, []);
+
+  /**
+   * Pick the best female Indian voice for the chosen language.
+   * Strategy: same-language female → same-language any → Hindi female (for Marathi fallback) → en-IN female.
+   */
+  function pickVoice(forLang: Lang): SpeechSynthesisVoice | undefined {
+    if (typeof window === "undefined") return undefined;
+    const voices = window.speechSynthesis.getVoices();
+    if (!voices.length) return undefined;
+    const target = LANG_LABELS[forLang].voice; // en-IN / hi-IN / mr-IN
+    const FEMALE_PATTERN =
+      /female|woman|kalpana|lekha|veena|aditi|swara|priya|heera|rashmi|isha|tara|kiran|google.*(female|hindi|marathi)/i;
+
+    // 1. Exact lang + female name
+    let v = voices.find((v) => v.lang === target && FEMALE_PATTERN.test(v.name));
+    if (v) return v;
+    // 2. Same lang, any name (browsers' default for hi-IN/mr-IN is typically female)
+    v = voices.find((v) => v.lang === target);
+    if (v) return v;
+    // 3. Lang prefix match (e.g. "hi" if "hi-IN" not available)
+    const prefix = target.split("-")[0]!;
+    v = voices.find((v) => v.lang.startsWith(prefix) && FEMALE_PATTERN.test(v.name));
+    if (v) return v;
+    v = voices.find((v) => v.lang.startsWith(prefix));
+    if (v) return v;
+    // 4. Marathi fallback: use Hindi (closest pronunciation), prefer female
+    if (forLang === "mr") {
+      v = voices.find((v) => v.lang === "hi-IN" && FEMALE_PATTERN.test(v.name));
+      if (v) return v;
+      v = voices.find((v) => v.lang === "hi-IN");
+      if (v) return v;
+    }
+    // 5. Last resort: en-IN female
+    v = voices.find((v) => v.lang === "en-IN" && FEMALE_PATTERN.test(v.name));
+    if (v) return v;
+    v = voices.find((v) => v.lang === "en-IN");
+    return v;
+  }
 
   // Initial greeting
   useEffect(() => {
@@ -73,13 +124,16 @@ export default function MayaPanel({ open, onClose }: { open: boolean; onClose: (
     if (typeof window === "undefined" || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = LANG_LABELS[lang].voice;
-    u.rate = 0.95;
-    u.pitch = 1.05;
+    const voice = pickVoice(lang);
+    if (voice) u.voice = voice;
+    u.lang = voice?.lang ?? LANG_LABELS[lang].voice;
+    // Marathi/Hindi need slower rate for clarity; pitch slightly higher for female feel
+    u.rate = lang === "en" ? 0.95 : 0.88;
+    u.pitch = 1.15;
+    u.volume = 1.0;
     u.onstart = () => setState("speaking");
     u.onend = () => {
       setState(wakeActiveRef.current ? "listening-wake" : "idle");
-      // After Maya finishes speaking, resume wake listening
       if (wakeActiveRef.current) setTimeout(() => startWakeListening(true), 200);
     };
     u.onerror = () => setState("idle");

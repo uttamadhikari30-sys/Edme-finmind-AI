@@ -89,7 +89,7 @@ export default function LoginPage() {
                 mode === m ? "bg-white text-navy shadow-soft" : "text-ink-subtle hover:text-navy"
               }`}
             >
-              {m === "password" ? "🔑 Password" : "✉️ Email link (OTP)"}
+              {m === "password" ? "🔑 Password" : "✉️ OTP"}
             </button>
           ))}
         </div>
