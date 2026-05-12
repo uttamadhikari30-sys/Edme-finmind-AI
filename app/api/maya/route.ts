@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -32,7 +31,6 @@ async function buildContext(): Promise<string> {
     const orgId = (membership as any).org_id as string;
     const orgName = ((membership as any).organizations as any)?.name ?? "Edme Insurance Brokers Limited";
 
-    // Current period
     const today = new Date().toISOString().slice(0, 10);
     const { data: periodNow } = await supabase
       .from("fiscal_periods")
@@ -76,7 +74,7 @@ async function buildContext(): Promise<string> {
     ]
       .filter(Boolean)
       .join("\n");
-  } catch (e) {
+  } catch {
     return "";
   }
 }
@@ -119,20 +117,35 @@ ${businessContext || "(No live data available — answer generically about finan
 
 If the user just greets you, greet them back warmly and offer to share key numbers.`;
 
-  const anthropic = new Anthropic({ apiKey });
-
   try {
-    const msg = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 300,
-      system,
-      messages: [
-        ...history.slice(-6).map((h) => ({ role: h.role, content: h.content })),
-        { role: "user" as const, content: question },
-      ],
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 300,
+        system,
+        messages: [
+          ...history.slice(-6).map((h) => ({ role: h.role, content: h.content })),
+          { role: "user", content: question },
+        ],
+      }),
     });
 
-    const text = msg.content
+    if (!res.ok) {
+      const errText = await res.text();
+      return NextResponse.json(
+        { error: `Anthropic API ${res.status}: ${errText.slice(0, 200)}`, fallback: true },
+        { status: 500 }
+      );
+    }
+
+    const data = await res.json();
+    const text = (data.content ?? [])
       .filter((c: any) => c.type === "text")
       .map((c: any) => c.text)
       .join("\n")
@@ -141,7 +154,7 @@ If the user just greets you, greet them back warmly and offer to share key numbe
     return NextResponse.json({ text });
   } catch (e: any) {
     return NextResponse.json(
-      { error: e?.message ?? "Anthropic API error", fallback: true },
+      { error: e?.message ?? "Network error", fallback: true },
       { status: 500 }
     );
   }
