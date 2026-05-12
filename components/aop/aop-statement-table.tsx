@@ -1,7 +1,9 @@
 "use client";
 
+import { useRef } from "react";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { useCurrency, formatCurrencyLakhs, compactLakhs } from "@/lib/currency";
+import ExportButtons from "@/components/ui/export-buttons";
 
 export type AopRow = {
   id: string;
@@ -46,10 +48,17 @@ export default function AopStatementTable({
   const fyTotal = (r: AopRow) =>
     MONTHS.reduce((s, m) => s + Number(r[m.key] ?? 0), 0);
 
+  const containerRef = useRef<HTMLDivElement>(null);
+
   return (
     <Card>
-      <CardHeader title={title} tag={{ label: fyLabel, tone: "green" }} />
-      <CardBody className="p-0">
+      <CardHeader
+        title={title}
+        tag={{ label: fyLabel, tone: "green" }}
+        right={<ExportButtons reportName={title} containerRef={containerRef} />}
+      />
+      <CardBody className="p-0" >
+      <div ref={containerRef as any}>
         <div className="overflow-x-auto">
           <table className="fm-table">
             <thead>
@@ -116,6 +125,7 @@ export default function AopStatementTable({
             </tbody>
           </table>
         </div>
+      </div>
       </CardBody>
     </Card>
   );

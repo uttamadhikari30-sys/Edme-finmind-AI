@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { useCurrency, formatCurrencyLakhs } from "@/lib/currency";
+import ExportButtons from "@/components/ui/export-buttons";
 
 type Vertical = {
   id: string;
@@ -32,6 +33,7 @@ function tierFor(pct: number) {
 
 export default function VPBClient({ verticals }: { verticals: Vertical[] }) {
   const currency = useCurrency();
+  const tableRef = useRef<HTMLDivElement>(null);
   const [tab, setTab] = useState<Tab>("calculator");
 
   const calc = verticals.map((v) => {
@@ -120,14 +122,10 @@ export default function VPBClient({ verticals }: { verticals: Vertical[] }) {
           <CardHeader
             title="🏆 Business Heads · Current Period"
             tag={{ label: `Pool = ${(VPB_POOL_PCT * 100).toFixed(1)}% of Revenue`, tone: "purple" }}
-            right={
-              <button className="px-3 py-1.5 rounded-lg border border-[var(--border)] bg-white text-[11.5px] font-semibold text-ink-muted hover:border-edgreen hover:text-edgreen flex items-center gap-1">
-                ⬇ Export
-              </button>
-            }
+            right={<ExportButtons reportName="VPB Calculator" containerRef={tableRef} />}
           />
           <CardBody className="p-0">
-            <div className="overflow-x-auto">
+            <div ref={tableRef} className="overflow-x-auto">
               <table className="fm-table">
                 <thead>
                   <tr>

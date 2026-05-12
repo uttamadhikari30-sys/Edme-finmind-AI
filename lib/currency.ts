@@ -5,10 +5,11 @@ import { useEffect, useState } from "react";
 export type Currency = {
   code: string;
   symbol: string;
-  rate: number; // multiply INR amount by this rate to get target currency
+  rate: number;
 };
 
-// FX rates from INR base. Updated 2026-05.
+export type Unit = "actual" | "lakhs" | "crores" | "millions";
+
 export const CURRENCIES: Record<string, Currency> = {
   INR: { code: "INR", symbol: "₹",  rate: 1.0 },
   USD: { code: "USD", symbol: "$",  rate: 0.012 },
@@ -17,35 +18,83 @@ export const CURRENCIES: Record<string, Currency> = {
   SGD: { code: "SGD", symbol: "S$", rate: 0.016 },
 };
 
+const UNIT_DIVISOR: Record<Unit, number> = {
+  actual: 1,
+  lakhs: 1e5,
+  crores: 1e7,
+  millions: 1e6,
+};
+
+const UNIT_SUFFIX: Record<Unit, string> = {
+  actual: "",
+  lakhs: "L",
+  crores: "Cr",
+  millions: "M",
+};
+
+const UNIT_DECIMALS: Record<Unit, number> = {
+  actual: 0,
+  lakhs: 2,
+  crores: 2,
+  millions: 1,
+};
+
 export function getCurrencyFromStorage(): Currency {
   if (typeof window === "undefined") return CURRENCIES.INR!;
   const code = localStorage.getItem("fm_currency") ?? "INR";
   return CURRENCIES[code] ?? CURRENCIES.INR!;
 }
 
-/** Hook that returns the live currency, re-rendering when user picks a new one */
+export function getUnitFromStorage(): Unit {
+  if (typeof window === "undefined") return "lakhs";
+  const u = localStorage.getItem("fm_unit") as Unit | null;
+  return u ?? "lakhs";
+}
+
+/** Hook: live currency, re-renders on currency OR unit changes (so callers re-format). */
 export function useCurrency(): Currency {
   const [cur, setCur] = useState<Currency>(CURRENCIES.INR!);
   useEffect(() => {
     setCur(getCurrencyFromStorage());
-    const onChange = (e: Event) => {
-      const code = (e as CustomEvent<string>).detail;
-      setCur(CURRENCIES[code] ?? CURRENCIES.INR!);
+    const onCur = (e: Event) => setCur(CURRENCIES[(e as CustomEvent<string>).detail] ?? CURRENCIES.INR!);
+    const onUnit = () => setCur((c) => ({ ...c })); // force re-render
+    window.addEventListener("fm-currency-change", onCur);
+    window.addEventListener("fm-unit-change", onUnit);
+    return () => {
+      window.removeEventListener("fm-currency-change", onCur);
+      window.removeEventListener("fm-unit-change", onUnit);
     };
-    window.addEventListener("fm-currency-change", onChange);
-    return () => window.removeEventListener("fm-currency-change", onChange);
   }, []);
   return cur;
 }
 
-/** Format an INR base amount in the selected currency, with Lakhs suffix. */
-export function formatCurrencyLakhs(inrValue: number, currency: Currency = CURRENCIES.INR!): string {
-  if (inrValue == null || isNaN(inrValue)) return "—";
-  const converted = inrValue * currency.rate;
-  return `${currency.symbol}${(converted / 1e5).toFixed(2)} L`;
+/** Hook: live unit (Actual/Lakhs/Crores/Millions). */
+export function useUnit(): Unit {
+  const [unit, setUnit] = useState<Unit>("lakhs");
+  useEffect(() => {
+    setUnit(getUnitFromStorage());
+    const onChange = (e: Event) => setUnit(((e as CustomEvent<string>).detail as Unit) ?? "lakhs");
+    window.addEventListener("fm-unit-change", onChange);
+    return () => window.removeEventListener("fm-unit-change", onChange);
+  }, []);
+  return unit;
 }
 
-/** Format an INR base amount in selected currency in its native units (no Lakhs scaling) */
+/** Format an INR value in the selected currency + selected unit. Reads unit from localStorage. */
+export function formatCurrencyLakhs(inrValue: number, currency: Currency = CURRENCIES.INR!): string {
+  if (inrValue == null || isNaN(inrValue)) return "—";
+  const unit = getUnitFromStorage();
+  const converted = inrValue * currency.rate;
+  const divisor = UNIT_DIVISOR[unit];
+  const suffix = UNIT_SUFFIX[unit];
+  const decimals = UNIT_DECIMALS[unit];
+  const formatted = (converted / divisor).toLocaleString("en-IN", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+  return `${currency.symbol}${formatted}${suffix ? " " + suffix : ""}`;
+}
+
 export function formatCurrency(inrValue: number, currency: Currency = CURRENCIES.INR!): string {
   if (inrValue == null || isNaN(inrValue)) return "—";
   const converted = inrValue * currency.rate;
@@ -55,9 +104,15 @@ export function formatCurrency(inrValue: number, currency: Currency = CURRENCIES
   return `${currency.symbol}${converted.toFixed(0)}`;
 }
 
-/** Format compact: e.g., "245" (in lakhs scale, no symbol/suffix) */
+/** Compact display of value in current unit, NO currency symbol or suffix (for table cells). */
 export function compactLakhs(inrValue: number, currency: Currency = CURRENCIES.INR!): string {
   if (inrValue == null || isNaN(inrValue)) return "—";
+  const unit = getUnitFromStorage();
   const converted = inrValue * currency.rate;
-  return (converted / 1e5).toFixed(0);
+  const divisor = UNIT_DIVISOR[unit];
+  const decimals = UNIT_DECIMALS[unit];
+  return (converted / divisor).toLocaleString("en-IN", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
 }

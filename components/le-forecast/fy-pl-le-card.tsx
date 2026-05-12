@@ -1,6 +1,8 @@
 "use client";
 
+import { useRef } from "react";
 import { useCurrency, formatCurrencyLakhs, compactLakhs } from "@/lib/currency";
+import ExportButtons from "@/components/ui/export-buttons";
 
 type Line = {
   label: string;
@@ -13,14 +15,16 @@ type Line = {
 
 export default function FYPLLeCard({ lines, fyLabel }: { lines: Line[]; fyLabel: string }) {
   const currency = useCurrency();
+  const tableRef = useRef<HTMLDivElement>(null);
 
   return (
     <div className="bg-white rounded-[14px] border border-[var(--border)] shadow-soft overflow-hidden">
       <div className="px-5 py-3.5 flex items-center gap-2.5 border-b border-[var(--border-2)]">
         <h3 className="font-serif text-[15.5px] font-bold text-navy flex-1">📋 Full Year P&amp;L — LE vs AOP</h3>
         <span className="pill pill-green">{fyLabel}</span>
+        <ExportButtons reportName={`Full Year P&L LE vs AOP · ${fyLabel}`} containerRef={tableRef} />
       </div>
-      <div className="p-0 overflow-x-auto">
+      <div ref={tableRef} className="p-0 overflow-x-auto">
         <table className="fm-table">
           <thead>
             <tr>

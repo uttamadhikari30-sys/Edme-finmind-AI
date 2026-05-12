@@ -1,7 +1,9 @@
 "use client";
 
+import { useRef } from "react";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { useCurrency, formatCurrencyLakhs } from "@/lib/currency";
+import ExportButtons from "@/components/ui/export-buttons";
 
 type Vertical = {
   id: string;
@@ -36,6 +38,7 @@ export default function VerticalMatrixClient({
   currentPeriodLabel: string;
 }) {
   const currency = useCurrency();
+  const tableRef = useRef<HTMLDivElement>(null);
 
   const totalRev = verticals.reduce((s, v) => s + v.revenue, 0);
   const totalRevAOP = verticals.reduce((s, v) => s + v.revAOP, 0);
@@ -84,9 +87,10 @@ export default function VerticalMatrixClient({
         <CardHeader
           title={`All Verticals · ${currentPeriodLabel}`}
           tag={{ label: "incl. VPB Tier", tone: "purple" }}
+          right={<ExportButtons reportName={`Vertical Performance · ${currentPeriodLabel}`} containerRef={tableRef} />}
         />
         <CardBody className="p-0">
-          <div className="overflow-x-auto">
+          <div ref={tableRef} className="overflow-x-auto">
             <table className="fm-table">
               <thead>
                 <tr>

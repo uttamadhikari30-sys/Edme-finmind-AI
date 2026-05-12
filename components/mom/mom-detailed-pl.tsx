@@ -1,6 +1,8 @@
 "use client";
 
+import { useRef } from "react";
 import { useCurrency, formatCurrencyLakhs, compactLakhs } from "@/lib/currency";
+import ExportButtons from "@/components/ui/export-buttons";
 
 type Period = { id: string; period_label: string; start_date: string; end_date: string };
 type Bucket = Record<string, Record<string, number>>;
@@ -17,6 +19,7 @@ export default function MoMDetailedPL({
   aopByAccount: Bucket;
 }) {
   const currency = useCurrency();
+  const tableRef = useRef<HTMLDivElement>(null);
   const today = new Date().toISOString().slice(0, 10);
 
   const revenueAccounts = Object.entries(revenueByAccount)
@@ -70,8 +73,9 @@ export default function MoMDetailedPL({
         <h3 className="font-serif text-[15.5px] font-bold text-navy flex-1">
           Month-on-Month Detailed P&amp;L
         </h3>
+        <ExportButtons reportName="Month-on-Month Detailed P&L" containerRef={tableRef} />
       </div>
-      <div className="overflow-x-auto">
+      <div ref={tableRef} className="overflow-x-auto">
         <table className="fm-table">
           <thead>
             <tr>

@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { useCurrency, formatCurrencyLakhs, compactLakhs } from "@/lib/currency";
+import ExportButtons from "@/components/ui/export-buttons";
 
 type Period = { id: string; period_label: string; start_date: string; end_date: string; status: string };
 type Account = { id: string; account_code: string; account_name: string; account_type: string };
@@ -39,6 +40,7 @@ export default function PLStatementClient({
 
   const [scope, setScope] = useState<Scope>("ftm");
   const [vertical, setVertical] = useState<string>("");
+  const tableRef = useRef<HTMLDivElement>(null);
 
   const periodIdsInScope = useMemo(() => {
     if (scope === "ftm") return currentPeriod ? [currentPeriod.id] : [];
@@ -196,9 +198,7 @@ export default function PLStatementClient({
           </select>
         </div>
 
-        <button className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[var(--border)] bg-white text-[12px] font-semibold text-ink-muted hover:border-edgreen hover:text-edgreen transition">
-          ⬇ Excel
-        </button>
+        <ExportButtons reportName={`P&L Statement · ${scopeLabel}`} containerRef={tableRef} />
       </div>
 
       {/* Header strip with status */}
@@ -222,7 +222,7 @@ export default function PLStatementClient({
       {/* Main table */}
       <Card>
         <CardBody className="p-0">
-          <div className="overflow-x-auto">
+          <div ref={tableRef} className="overflow-x-auto">
             <table className="fm-table">
               <thead>
                 <tr>

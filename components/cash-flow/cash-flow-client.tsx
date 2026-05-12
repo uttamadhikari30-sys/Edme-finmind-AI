@@ -1,7 +1,9 @@
 "use client";
 
+import { useRef } from "react";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { useCurrency, formatCurrencyLakhs, compactLakhs } from "@/lib/currency";
+import ExportButtons from "@/components/ui/export-buttons";
 
 export default function CashFlowClient({
   periodLabel,
@@ -11,6 +13,7 @@ export default function CashFlowClient({
   ebitda: number;
 }) {
   const currency = useCurrency();
+  const tableRef = useRef<HTMLDivElement>(null);
 
   // Operating Activities (indirect method)
   const ebitdaCash = ebitda;
@@ -76,9 +79,12 @@ export default function CashFlowClient({
 
       {/* Detailed Cash Flow table */}
       <Card>
-        <CardHeader title={`Cash Flow Statement · ${periodLabel}`} />
+        <CardHeader
+          title={`Cash Flow Statement · ${periodLabel}`}
+          right={<ExportButtons reportName={`Cash Flow · ${periodLabel}`} containerRef={tableRef} />}
+        />
         <CardBody className="p-0">
-          <div className="overflow-x-auto">
+          <div ref={tableRef} className="overflow-x-auto">
             <table className="fm-table">
               <thead>
                 <tr>
