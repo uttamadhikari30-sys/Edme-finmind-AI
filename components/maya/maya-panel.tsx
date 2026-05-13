@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { humanize } from "@/lib/maya/humanize";
 
 type Lang = "en" | "hi" | "mr";
 type State = "idle" | "listening-wake" | "listening-question" | "thinking" | "speaking";
@@ -123,13 +124,16 @@ export default function MayaPanel({ open, onClose }: { open: boolean; onClose: (
   function speak(text: string) {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
+    // Convert "₹342 L" → "three hundred forty-two lakhs rupees" so the voice
+    // reads numbers naturally instead of spelling letters / digits.
+    const spoken = humanize(text, lang);
+    const u = new SpeechSynthesisUtterance(spoken);
     const voice = pickVoice(lang);
     if (voice) u.voice = voice;
     u.lang = voice?.lang ?? LANG_LABELS[lang].voice;
     // Marathi/Hindi need slower rate for clarity; pitch slightly higher for female feel
-    u.rate = lang === "en" ? 0.95 : 0.88;
-    u.pitch = 1.15;
+    u.rate = lang === "en" ? 0.92 : 0.86;
+    u.pitch = 1.12;
     u.volume = 1.0;
     u.onstart = () => setState("speaking");
     u.onend = () => {
