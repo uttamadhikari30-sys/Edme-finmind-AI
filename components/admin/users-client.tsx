@@ -38,8 +38,17 @@ type Invite = {
   full_name: string | null;
   role: string;
   token: string;
+  business_unit_id: string | null;
   created_at: string;
   accepted_at: string | null;
+};
+
+type BU = {
+  id: string;
+  code: string;
+  name: string;
+  manager_user_id: string | null;
+  is_active: boolean;
 };
 
 export default function UsersClient({
@@ -47,16 +56,23 @@ export default function UsersClient({
   isAdmin,
   members,
   invites,
+  bus,
 }: {
   orgId: string;
   isAdmin: boolean;
   members: Member[];
   invites: Invite[];
+  bus: BU[];
 }) {
   const router = useRouter();
   const supabase = createClient();
   const [showInvite, setShowInvite] = useState(false);
-  const [inv, setInv] = useState({ email: "", full_name: "", role: "finance" });
+  const [inv, setInv] = useState({
+    email: "",
+    full_name: "",
+    role: "finance",
+    business_unit_id: "",
+  });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [success, setSuccess] = useState<{ email: string; link: string; emailSent: boolean } | null>(null);
@@ -67,9 +83,15 @@ export default function UsersClient({
     setErr(null);
     setSuccess(null);
 
+    if (inv.role === "bh" && !inv.business_unit_id) {
+      setBusy(false);
+      setErr("Please select a vertical for the Business Head.");
+      return;
+    }
+
     const cleanEmail = inv.email.trim().toLowerCase();
 
-    // 1. Insert the invite record (this carries the role + token)
+    // 1. Insert the invite record (this carries role + token + optional vertical)
     const { data: invite, error } = await supabase
       .from("org_invites")
       .insert({
@@ -77,6 +99,7 @@ export default function UsersClient({
         email: cleanEmail,
         full_name: inv.full_name || null,
         role: inv.role,
+        business_unit_id: inv.role === "bh" ? inv.business_unit_id : null,
       })
       .select()
       .single();
@@ -107,7 +130,7 @@ export default function UsersClient({
       link,
       emailSent: !otpErr,
     });
-    setInv({ email: "", full_name: "", role: "finance" });
+    setInv({ email: "", full_name: "", role: "finance", business_unit_id: "" });
     router.refresh();
   }
 
@@ -191,44 +214,88 @@ export default function UsersClient({
           />
           {showInvite && (
             <CardBody>
-              <form onSubmit={createInvite} className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-                <Field label="Email">
-                  <input
-                    type="email"
-                    required
-                    value={inv.email}
-                    onChange={(e) => setInv({ ...inv, email: e.target.value })}
-                    placeholder="teammate@edmeinsurance.com"
-                    className={inpCls}
-                  />
-                </Field>
-                <Field label="Full name">
-                  <input
-                    type="text"
-                    value={inv.full_name}
-                    onChange={(e) => setInv({ ...inv, full_name: e.target.value })}
-                    placeholder="Optional"
-                    className={inpCls}
-                  />
-                </Field>
-                <Field label="Role">
-                  <select
-                    value={inv.role}
-                    onChange={(e) => setInv({ ...inv, role: e.target.value })}
-                    className={inpCls}
+              <form onSubmit={createInvite} className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <Field label="Email">
+                    <input
+                      type="email"
+                      required
+                      value={inv.email}
+                      onChange={(e) => setInv({ ...inv, email: e.target.value })}
+                      placeholder="teammate@edmeinsurance.com"
+                      className={inpCls}
+                    />
+                  </Field>
+                  <Field label="Full name">
+                    <input
+                      type="text"
+                      value={inv.full_name}
+                      onChange={(e) => setInv({ ...inv, full_name: e.target.value })}
+                      placeholder="Optional"
+                      className={inpCls}
+                    />
+                  </Field>
+                  <Field label="Role">
+                    <select
+                      value={inv.role}
+                      onChange={(e) =>
+                        setInv({
+                          ...inv,
+                          role: e.target.value,
+                          business_unit_id: e.target.value === "bh" ? inv.business_unit_id : "",
+                        })
+                      }
+                      className={inpCls}
+                    >
+                      {ROLES.map((r) => (
+                        <option key={r.id} value={r.id}>{r.label} — {r.desc}</option>
+                      ))}
+                    </select>
+                  </Field>
+                </div>
+
+                {/* Vertical selector — only shown for Business Head role */}
+                {inv.role === "bh" && (
+                  <div className="rounded-xl border-2 border-navy/30 bg-navy-50/40 px-4 py-3.5">
+                    <div className="text-[10.5px] uppercase tracking-[1.5px] font-bold text-navy mb-1.5">
+                      🏢 Assign Vertical · <span className="text-edred">required for BH</span>
+                    </div>
+                    <select
+                      value={inv.business_unit_id}
+                      onChange={(e) => setInv({ ...inv, business_unit_id: e.target.value })}
+                      required
+                      className={inpCls + " mt-1"}
+                    >
+                      <option value="">— Select vertical —</option>
+                      {bus
+                        .filter((b) => b.is_active)
+                        .map((b) => {
+                          const taken = members.find((m) => m.user_id === b.manager_user_id);
+                          return (
+                            <option key={b.id} value={b.id}>
+                              {b.code} · {b.name}
+                              {taken ? `  (currently: ${taken.full_name ?? taken.email})` : ""}
+                            </option>
+                          );
+                        })}
+                    </select>
+                    <div className="text-[10.5px] text-ink-muted mt-1.5">
+                      On accept, the invitee becomes Manager of this vertical and sees only their
+                      vertical&apos;s P&amp;L / performance / VPB. If the vertical already has a
+                      manager, this new BH replaces them.
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-end">
+                  <button
+                    type="submit"
+                    disabled={busy}
+                    className="rounded-lg bg-edred text-white px-5 py-2.5 text-sm font-semibold hover:bg-edred-600 disabled:opacity-60 shadow-soft"
                   >
-                    {ROLES.map((r) => (
-                      <option key={r.id} value={r.id}>{r.label} — {r.desc}</option>
-                    ))}
-                  </select>
-                </Field>
-                <button
-                  type="submit"
-                  disabled={busy}
-                  className="rounded-lg bg-edred text-white px-4 py-2.5 text-sm font-semibold hover:bg-edred-600 disabled:opacity-60 shadow-soft"
-                >
-                  {busy ? "Sending…" : "✉ Invite & send OTP"}
-                </button>
+                    {busy ? "Sending…" : "✉ Invite & send OTP"}
+                  </button>
+                </div>
               </form>
 
               {success && (
@@ -279,6 +346,7 @@ export default function UsersClient({
                   <th>Email</th>
                   <th>Name</th>
                   <th>Role</th>
+                  <th>Vertical</th>
                   <th>Created</th>
                   <th colSpan={3}>Actions</th>
                 </tr>
@@ -288,11 +356,22 @@ export default function UsersClient({
                   const link = typeof window !== "undefined"
                     ? `${window.location.origin}/accept-invite?token=${i.token}`
                     : "";
+                  const assignedBu = bus.find((b) => b.id === i.business_unit_id);
                   return (
                     <tr key={i.id}>
                       <td>{i.email}</td>
                       <td className="text-ink-muted">{i.full_name ?? "—"}</td>
                       <td><span className={`pill pill-${ROLE_TONE[i.role] || "navy"}`}>{i.role}</span></td>
+                      <td className="text-[11.5px]">
+                        {assignedBu ? (
+                          <span>
+                            <span className="font-mono text-navy font-bold">{assignedBu.code}</span>{" "}
+                            <span className="text-ink-muted">{assignedBu.name}</span>
+                          </span>
+                        ) : (
+                          <span className="text-ink-subtle">—</span>
+                        )}
+                      </td>
                       <td className="text-ink-muted">{new Date(i.created_at).toLocaleDateString()}</td>
                       <td>
                         <button

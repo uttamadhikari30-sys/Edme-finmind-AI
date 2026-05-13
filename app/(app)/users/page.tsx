@@ -1,8 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import PageHeader from "@/components/ui/page-header";
 import UsersClient from "@/components/admin/users-client";
+
+export const dynamic = "force-dynamic";
 
 export default async function UsersPage() {
   await requireUser();
@@ -17,7 +18,7 @@ export default async function UsersPage() {
   if (!membership) return null;
   const isAdmin = ["owner", "cfo"].includes(membership.role);
 
-  const [{ data: members }, { data: invites }] = await Promise.all([
+  const [{ data: members }, { data: invites }, { data: bus }] = await Promise.all([
     supabase
       .from("v_org_members_with_email")
       .select("*")
@@ -25,11 +26,16 @@ export default async function UsersPage() {
     isAdmin
       ? supabase
           .from("org_invites")
-          .select("id, email, full_name, role, token, created_at, accepted_at")
+          .select("id, email, full_name, role, token, business_unit_id, created_at, accepted_at")
           .eq("org_id", membership.org_id)
           .is("accepted_at", null)
           .order("created_at", { ascending: false })
       : Promise.resolve({ data: [] as any[] }),
+    supabase
+      .from("business_units")
+      .select("id, code, name, manager_user_id, is_active")
+      .eq("org_id", membership.org_id)
+      .order("code"),
   ]);
 
   return (
@@ -38,7 +44,7 @@ export default async function UsersPage() {
         title="Users & Roles"
         subtitle={
           isAdmin
-            ? "Invite teammates, manage roles, and revoke access."
+            ? "Invite teammates, manage roles, assign Business Heads to verticals."
             : "Workspace members. Only admins can invite or change roles."
         }
       />
@@ -47,6 +53,7 @@ export default async function UsersPage() {
         isAdmin={isAdmin}
         members={members ?? []}
         invites={invites ?? []}
+        bus={(bus as any[]) ?? []}
       />
     </>
   );
