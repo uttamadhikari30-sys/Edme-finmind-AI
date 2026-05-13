@@ -28,6 +28,7 @@ const NAV: NavItem[] = [
   { id: "insurance-market", label: "Insurance Market", href: "/insurance-market", icon: "🏛", section: "INTELLIGENCE" },
   { id: "board-reports", label: "Board Reports", href: "/board-reports", icon: "📑", section: "INTELLIGENCE" },
   { id: "users", label: "Users & Roles", href: "/users", icon: "👤", section: "ADMIN" },
+  { id: "business-units", label: "Business Verticals", href: "/business-units", icon: "🏢", section: "ADMIN" },
   { id: "settings", label: "Settings", href: "/settings", icon: "⚙️", section: "ADMIN" },
 ];
 
