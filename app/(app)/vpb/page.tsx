@@ -11,13 +11,14 @@ export default async function VPBPage() {
 
   const { data: membership } = (await supabase
     .from("org_members")
-    .select("org_id")
+    .select("org_id, role")
     .limit(1)
-    .single()) as { data: { org_id: string } | null };
+    .single()) as { data: { org_id: string; role: string } | null };
   if (!membership) return null;
   const orgId = membership.org_id;
+  const canEditTiers = ["owner", "cfo"].includes(membership.role);
 
-  const [{ data: bus }, { data: members }, { data: budgets }] = await Promise.all([
+  const [{ data: bus }, { data: members }, { data: budgets }, { data: tiers }] = await Promise.all([
     supabase
       .from("business_units")
       .select("id, code, name, manager_user_id")
@@ -27,6 +28,11 @@ export default async function VPBPage() {
       .from("v_org_members_with_email")
       .select("user_id, full_name"),
     supabase.from("budgets").select("id").eq("org_id", orgId).limit(1),
+    supabase
+      .from("vpb_tiers")
+      .select("id, label, min_pct, max_pct, vpb_pct, tone, priority, is_active")
+      .eq("org_id", orgId)
+      .order("priority"),
   ]);
 
   // Aggregate revenue / expense per BU from posted JEs
@@ -85,7 +91,12 @@ export default async function VPBPage() {
         title="Variable Pay (VPB) Calculator"
         subtitle="Tier-based incentive engine · All 15 Verticals · FY 2025-26 · Click any figure to drill down"
       />
-      <VPBClient verticals={verticals} />
+      <VPBClient
+        verticals={verticals}
+        orgId={orgId}
+        tiers={(tiers as any[]) ?? []}
+        canEditTiers={canEditTiers}
+      />
     </>
   );
 }

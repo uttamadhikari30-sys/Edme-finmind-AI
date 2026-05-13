@@ -284,9 +284,7 @@ export default function LEForecastClient({
           deltaTone={aopDeltaEbitda >= 0 ? "green" : "red"}
         />
         <KpiTile
-          label={`YTD Revenue (${ytdPeriods[0]?.period_label.split(" ")[0] ?? "Apr"}–${
-            ytdPeriods.at(-1)?.period_label.split(" ")[0] ?? "Oct"
-          })`}
+          label={`Actuals (${ytdPeriods[0]?.period_label ?? "Apr"} → ${ytdPeriods.at(-1)?.period_label ?? "Oct"})`}
           value={formatCurrencyLakhs(ytdActualRev, currency)}
           accent="gold"
           emoji="🎯"
@@ -294,9 +292,7 @@ export default function LEForecastClient({
           deltaTone="green"
         />
         <KpiTile
-          label={`H2 LE (${futurePeriods[0]?.period_label.split(" ")[0] ?? "Nov"}–${
-            futurePeriods.at(-1)?.period_label.split(" ")[0] ?? "Mar"
-          })`}
+          label={`LE (${futurePeriods[0]?.period_label ?? "Nov"} → ${futurePeriods.at(-1)?.period_label ?? "Mar"})`}
           value={formatCurrencyLakhs(futureRevLE, currency)}
           accent="red"
           emoji="🔮"

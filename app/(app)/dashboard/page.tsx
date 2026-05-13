@@ -27,6 +27,14 @@ export default async function DashboardPage() {
   if (!membership) return null;
   const orgId = membership.org_id;
   const org = membership.organizations as { name: string };
+
+  const { data: verticalsList } = await supabase
+    .from("business_units")
+    .select("id, code, name")
+    .eq("org_id", orgId)
+    .eq("is_active", true)
+    .order("code");
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -215,7 +223,10 @@ export default async function DashboardPage() {
         jeCount={kpis?.je_count_posted ?? 0}
       />
 
-      <DashboardControls periodLabel={periodToday?.period_label ?? "—"} />
+      <DashboardControls
+        periodLabel={periodToday?.period_label ?? "—"}
+        verticals={(verticalsList as any[]) ?? []}
+      />
 
       <LiveAlertsRibbon alerts={alerts} />
 

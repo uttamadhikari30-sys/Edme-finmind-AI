@@ -99,12 +99,16 @@ export default function MayaPanel({ open, onClose }: { open: boolean; onClose: (
     return v;
   }
 
-  // Initial greeting
+  // Initial greeting + AUTO-START wake listening
   useEffect(() => {
     if (open && messages.length === 0) {
       const greet: Message = { role: "maya", text: GREETINGS[lang] };
       setMessages([greet]);
       speak(GREETINGS[lang]);
+      // Auto-arm "Hey Maya" wake-word once the greeting plays
+      setTimeout(() => {
+        if (!wakeActiveRef.current) startWakeListening(true);
+      }, 2500);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);

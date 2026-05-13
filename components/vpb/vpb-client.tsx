@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { useCurrency, formatCurrencyLakhs } from "@/lib/currency";
 import ExportButtons from "@/components/ui/export-buttons";
+import TierRulesEditor, { type Tier as DbTier } from "@/components/vpb/tier-rules-editor";
 
 type Vertical = {
   id: string;
@@ -19,22 +20,31 @@ type Tab = "calculator" | "mom" | "tier-rules" | "fy-projection";
 
 const VPB_POOL_PCT = 4.2 / 100;
 
-const TIERS = [
-  { id: "stretch", label: "Stretch 125%", min: 110, max: Infinity, vpb: 125, tone: "purple" },
-  { id: "above",   label: "Above Target 100%", min: 100, max: 110, vpb: 100, tone: "green" },
-  { id: "ontarget",label: "On Target 75%", min: 90, max: 100, vpb: 75, tone: "gold" },
-  { id: "thresh",  label: "Threshold 50%", min: 80, max: 90, vpb: 50, tone: "gold" },
-  { id: "below",   label: "Below Threshold", min: 0, max: 80, vpb: 0, tone: "red" },
-] as const;
-
-function tierFor(pct: number) {
-  return TIERS.find((t) => pct >= t.min && pct < t.max) ?? TIERS[4];
-}
-
-export default function VPBClient({ verticals }: { verticals: Vertical[] }) {
+export default function VPBClient({
+  verticals,
+  orgId,
+  tiers,
+  canEditTiers,
+}: {
+  verticals: Vertical[];
+  orgId: string;
+  tiers: DbTier[];
+  canEditTiers: boolean;
+}) {
   const currency = useCurrency();
   const tableRef = useRef<HTMLDivElement>(null);
   const [tab, setTab] = useState<Tab>("calculator");
+
+  const activeTiers = (tiers ?? []).filter((t) => t.is_active).sort((a, b) => a.priority - b.priority);
+
+  function tierFor(pct: number) {
+    return (
+      activeTiers.find((t) => pct >= Number(t.min_pct) && pct < Number(t.max_pct)) ??
+      activeTiers[activeTiers.length - 1] ?? {
+        label: "Below Threshold", min_pct: 0, max_pct: 80, vpb_pct: 0, tone: "red",
+      }
+    );
+  }
 
   const calc = verticals.map((v) => {
     const ebitda = v.revenue - v.expense;
@@ -44,12 +54,12 @@ export default function VPBClient({ verticals }: { verticals: Vertical[] }) {
     const avgPct = (revPct + ebitdaPct) / 2;
     const tier = tierFor(avgPct);
     const pool = v.revenue * VPB_POOL_PCT;
-    const earned = pool * (tier!.vpb / 100);
+    const earned = pool * (Number(tier!.vpb_pct) / 100);
     const remaining = pool - earned;
 
     // Compute next tier gap
-    const nextTier = TIERS.find((t) => t.min > avgPct);
-    const gap = nextTier ? nextTier.min - avgPct : 0;
+    const nextTier = activeTiers.find((t) => Number(t.min_pct) > avgPct);
+    const gap = nextTier ? Number(nextTier.min_pct) - avgPct : 0;
 
     return {
       ...v,
@@ -190,15 +200,15 @@ export default function VPBClient({ verticals }: { verticals: Vertical[] }) {
                             {c.tier!.label}
                           </span>
                         </td>
-                        <td className={`r font-mono font-bold ${c.tier!.vpb >= 75 ? "text-edpurple" : "text-ink-muted"}`}>
-                          {c.revAOP > 0 ? `${c.tier!.vpb}%` : "—"}
+                        <td className={`r font-mono font-bold ${Number(c.tier!.vpb_pct) >= 75 ? "text-edpurple" : "text-ink-muted"}`}>
+                          {c.revAOP > 0 ? `${Number(c.tier!.vpb_pct)}%` : "—"}
                         </td>
                         <td className="r font-mono">{formatCurrencyLakhs(c.pool, currency)}</td>
                         <td className="r font-mono font-bold text-gold">{formatCurrencyLakhs(c.earned, currency)}</td>
                         <td className="r font-mono text-ink-muted">{formatCurrencyLakhs(c.remaining, currency)}</td>
                         <td className="text-[10.5px] text-ink-muted">
                           {c.nextTier && c.revAOP > 0
-                            ? `Need avg ≥${c.nextTier.min}% for ${c.nextTier.label} — gap: ${c.gap.toFixed(1)}pp`
+                            ? `Need avg ≥${Number(c.nextTier.min_pct)}% for ${c.nextTier.label} — gap: ${c.gap.toFixed(1)}pp`
                             : "—"}
                         </td>
                       </tr>
@@ -231,50 +241,7 @@ export default function VPBClient({ verticals }: { verticals: Vertical[] }) {
       )}
 
       {tab === "tier-rules" && (
-        <Card>
-          <CardHeader
-            title="🏆 Tier Rules"
-            tag={{ label: "Edme VPB Policy", tone: "purple" }}
-          />
-          <CardBody>
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-              {TIERS.map((t) => (
-                <div
-                  key={t.id}
-                  className="rounded-xl border-2 p-4 bg-white"
-                  style={{
-                    borderColor:
-                      t.tone === "green" ? "rgba(0,168,120,0.3)"
-                      : t.tone === "purple" ? "rgba(124,58,237,0.3)"
-                      : t.tone === "gold" ? "rgba(200,149,42,0.3)"
-                      : "rgba(237,27,47,0.3)",
-                  }}
-                >
-                  <div
-                    className={`text-[14px] font-bold ${
-                      t.tone === "green" ? "text-edgreen"
-                      : t.tone === "purple" ? "text-edpurple"
-                      : t.tone === "gold" ? "text-gold"
-                      : "text-edred"
-                    }`}
-                  >
-                    {t.label}
-                  </div>
-                  <div className="mt-2 text-[11.5px] text-ink-muted">
-                    Achievement: {t.min === 0 ? "<" + t.max + "%" : `≥${t.min}% ${t.max === Infinity ? "" : `< ${t.max}%`}`}
-                  </div>
-                  <div className="mt-3 font-mono text-[24px] font-bold text-navy">{t.vpb}%</div>
-                  <div className="text-[10.5px] text-ink-subtle">of pool earned</div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-5 text-[12px] text-ink-muted leading-relaxed bg-bg-alt p-4 rounded-lg">
-              <b>How it works:</b> Each Business Head&apos;s achievement % = average of (Rev Actual ÷ Rev AOP) and
-              (EBITDA Actual ÷ EBITDA AOP). The achievement % places them in a tier; the tier determines what % of
-              their VPB pool they earn. Pool = {(VPB_POOL_PCT * 100).toFixed(1)}% of revenue achieved.
-            </div>
-          </CardBody>
-        </Card>
+        <TierRulesEditor orgId={orgId} tiers={tiers} canEdit={canEditTiers} />
       )}
 
       {tab === "fy-projection" && (
