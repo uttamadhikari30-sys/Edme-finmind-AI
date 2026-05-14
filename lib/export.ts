@@ -100,36 +100,50 @@ export function exportTableToPDF(reportName: string, table: HTMLTableElement | n
   }
   const tableHtml = table.outerHTML;
   const today = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
+  const logoUrl =
+    typeof window !== "undefined" ? `${window.location.origin}/edme-logo.png` : "/edme-logo.png";
+
   const html = `<!doctype html>
 <html>
 <head>
 <meta charset="utf-8" />
 <title>${reportName} — FINMIND AI</title>
 <style>
-  @page { size: A4 landscape; margin: 12mm; }
+  @page { size: A4 landscape; margin: 14mm 12mm 16mm; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #11192d; }
-  h1 { font-family: 'Cormorant Garamond', Georgia, serif; color: #1C3687; margin: 0 0 4px; }
-  .sub { color: #7888aa; font-size: 11px; margin-bottom: 20px; }
-  .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-  .mark { width: 4px; height: 28px; background: linear-gradient(180deg, #1C3687, #ED1B2F); border-radius: 2px; }
+  .header { display: flex; align-items: center; gap: 16px; padding: 12px 14px; border-bottom: 3px solid #1C3687; background: linear-gradient(90deg, #f5f8ff 0%, #fff 100%); margin-bottom: 16px; }
+  .header img.logo { height: 38px; width: auto; flex-shrink: 0; }
+  .header .brand { font-family: Georgia, serif; font-size: 16px; font-weight: 700; color: #1C3687; }
+  .header .brand .ai { color: #ED1B2F; }
+  .header .tag { font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: #7888aa; font-weight: 700; margin-top: 2px; }
+  .titleblock { flex: 1; }
+  h1 { font-family: 'Cormorant Garamond', Georgia, serif; color: #1C3687; margin: 0 0 4px; font-size: 22px; }
+  .sub { color: #7888aa; font-size: 10.5px; }
   table { border-collapse: collapse; width: 100%; font-size: 10px; }
   th { background: #1C3687; color: #fff; padding: 6px 8px; text-align: left; font-size: 9px; }
   td { padding: 5px 8px; border-bottom: 1px solid rgba(0,0,0,0.05); }
   tr:nth-child(even) td { background: rgba(28,54,135,0.02); }
-  .footer { margin-top: 16px; font-size: 9px; color: #7888aa; }
+  .footer { margin-top: 18px; padding-top: 8px; border-top: 1px solid #e8ecf8; font-size: 9px; color: #7888aa; display: flex; justify-content: space-between; }
 </style>
 </head>
 <body>
-  <div class="brand">
-    <div class="mark"></div>
-    <div>
+  <div class="header">
+    <img src="${logoUrl}" alt="Edme" class="logo" onerror="this.style.display='none'" />
+    <div class="titleblock">
       <h1>${reportName}</h1>
-      <div class="sub">FINMIND AI · Edme Insurance Brokers Limited · Generated ${today}</div>
+      <div class="sub">Edme Insurance Brokers Limited · Generated ${today}</div>
+    </div>
+    <div style="text-align: right;">
+      <div class="brand">FINMIND <span class="ai">AI</span></div>
+      <div class="tag">Edme MIS Platform</div>
     </div>
   </div>
   ${tableHtml}
-  <div class="footer">Confidential · For internal use only</div>
-  <script>window.addEventListener('load', () => { setTimeout(() => window.print(), 300); });</script>
+  <div class="footer">
+    <span>© Edme 2026 · Confidential — For internal use only</span>
+    <span>www.edmeinsurance.com</span>
+  </div>
+  <script>window.addEventListener('load', () => { setTimeout(() => window.print(), 400); });</script>
 </body>
 </html>`;
   const w = window.open("", "_blank", "width=900,height=700");
