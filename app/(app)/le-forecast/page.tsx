@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
 import PageHeader from "@/components/ui/page-header";
 import LEForecastClient from "@/components/le-forecast/le-forecast-client";
+import AIInsightsCard from "@/components/ai/ai-insights-card";
 
 export const dynamic = "force-dynamic";
 
@@ -117,6 +118,19 @@ export default async function LEForecastPage() {
         aopByAccount={aopByAccount}
         verticals={verticalsLE}
       />
+      <div className="mt-4">
+        <AIInsightsCard
+          page="le-forecast"
+          density="wide"
+          context={{
+            org: "Edme Insurance Brokers Limited",
+            total_periods: periods?.length ?? 12,
+            revenue_accounts: Object.keys(revenueByAccount).length,
+            expense_accounts: Object.keys(expenseByAccount).length,
+            note: "Latest Estimate for an Indian insurance broker. Forecast quality: 3-month moving average is solid. Q3 (Oct-Dec) renewals + Q4 new business = biggest upside window.",
+          }}
+        />
+      </div>
     </>
   );
 }

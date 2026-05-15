@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
 import PageHeader from "@/components/ui/page-header";
 import VerticalMatrixClient from "@/components/vertical/vertical-matrix-client";
+import AIInsightsCard from "@/components/ai/ai-insights-card";
 
 export const dynamic = "force-dynamic";
 
@@ -108,6 +109,29 @@ export default async function VerticalPage() {
         verticals={verticals}
         currentPeriodLabel={currentPeriod?.period_label ?? "—"}
       />
+      <div className="mt-4">
+        <AIInsightsCard
+          page="vertical"
+          density="wide"
+          context={{
+            org: "Edme Insurance Brokers Limited",
+            period: currentPeriod?.period_label,
+            vertical_count: verticals.length,
+            verticals_summary: verticals
+              .sort((a, b) => b.revenue - a.revenue)
+              .slice(0, 5)
+              .map((v) => ({
+                code: v.code,
+                name: v.name,
+                rev_inr: v.revenue,
+                expense_inr: v.expense,
+                rev_aop_inr: v.revAOP,
+                achievement_pct: v.revAOP > 0 ? (v.revenue / v.revAOP) * 100 : null,
+              })),
+            note: "17 EIBLCC verticals. Insurance broking concentration risk: top vertical should not exceed 35% of revenue.",
+          }}
+        />
+      </div>
     </>
   );
 }

@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
 import PageHeader from "@/components/ui/page-header";
 import CostListingClient from "@/components/cost/cost-listing-client";
+import AIInsightsCard from "@/components/ai/ai-insights-card";
 
 export const dynamic = "force-dynamic";
 
@@ -74,6 +75,19 @@ export default async function SalaryCostsPage() {
         rules={(rules as any[]) ?? []}
         targets={(targets as any[]) ?? []}
       />
+      <div className="mt-4">
+        <AIInsightsCard
+          page="salary-costs"
+          density="wide"
+          context={{
+            org: "Edme Insurance Brokers Limited",
+            salary_accounts: Array.from(spendByAccount.keys()).length,
+            total_salary_inr: Array.from(spendByAccount.values()).reduce((s, n) => s + n, 0),
+            rule_count: (rules as any[])?.length ?? 0,
+            note: "Salary cost analysis for an insurance broker. Industry benchmark: 18-25% of revenue. Mid-office should scale by policies-per-employee, not total headcount.",
+          }}
+        />
+      </div>
     </>
   );
 }

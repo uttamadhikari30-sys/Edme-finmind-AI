@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
 import PageHeader from "@/components/ui/page-header";
 import CostListingClient from "@/components/cost/cost-listing-client";
+import AIInsightsCard from "@/components/ai/ai-insights-card";
 
 export const dynamic = "force-dynamic";
 
@@ -75,6 +76,19 @@ export default async function AdminExpensesPage() {
         rules={(rules as any[]) ?? []}
         targets={(targets as any[]) ?? []}
       />
+      <div className="mt-4">
+        <AIInsightsCard
+          page="admin-expenses"
+          density="wide"
+          context={{
+            org: "Edme Insurance Brokers Limited",
+            admin_accounts: Array.from(spendByAccount.keys()).length,
+            total_admin_inr: Array.from(spendByAccount.values()).reduce((s, n) => s + n, 0),
+            rule_count: (rules as any[])?.length ?? 0,
+            note: "Admin overhead for an insurance broker. Industry benchmark: 12% of revenue. Above 15% indicates rent/marketing/travel running hot.",
+          }}
+        />
+      </div>
     </>
   );
 }

@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
 import PageHeader from "@/components/ui/page-header";
 import CashFlowClient from "@/components/cash-flow/cash-flow-client";
+import AIInsightsCard from "@/components/ai/ai-insights-card";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +55,20 @@ export default async function CashFlowPage() {
         periodLabel={currentPeriod?.period_label ?? "—"}
         ebitda={ebitda}
       />
+      <div className="mt-4">
+        <AIInsightsCard
+          page="cash-flow"
+          density="wide"
+          context={{
+            org: "Edme Insurance Brokers Limited",
+            period: currentPeriod?.period_label,
+            revenue_inr: revenue,
+            expense_inr: expense,
+            ebitda_inr: ebitda,
+            note: "Insurance broker cash flow. Operating cash conversion benchmark: EBITDA to cash > 80%. Receivables > 60 days = collection risk.",
+          }}
+        />
+      </div>
     </>
   );
 }

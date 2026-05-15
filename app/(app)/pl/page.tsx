@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
 import PageHeader from "@/components/ui/page-header";
 import PLStatementClient from "@/components/pl/pl-statement-client";
+import AIInsightsCard from "@/components/ai/ai-insights-card";
 
 export const dynamic = "force-dynamic";
 
@@ -94,6 +95,19 @@ export default async function PLPage() {
         actualByAccount={byAccount}
         budgetByAccount={budgetByAccount}
       />
+      <div className="mt-4">
+        <AIInsightsCard
+          page="pl"
+          density="wide"
+          context={{
+            org: "Edme Insurance Brokers Limited",
+            posted_accounts: Object.keys(byAccount).length,
+            budget_accounts: Object.keys(budgetByAccount).length,
+            verticals: bus?.length ?? 0,
+            note: "P&L for an Indian general insurance broker. Suggest where to compress overhead, which accounts to investigate, and how the cost mix compares to industry peers.",
+          }}
+        />
+      </div>
     </>
   );
 }

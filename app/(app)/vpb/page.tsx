@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
 import PageHeader from "@/components/ui/page-header";
 import VPBClient from "@/components/vpb/vpb-client";
+import AIInsightsCard from "@/components/ai/ai-insights-card";
 
 export const dynamic = "force-dynamic";
 
@@ -97,6 +98,19 @@ export default async function VPBPage() {
         tiers={(tiers as any[]) ?? []}
         canEditTiers={canEditTiers}
       />
+      <div className="mt-4">
+        <AIInsightsCard
+          page="vpb"
+          density="wide"
+          context={{
+            org: "Edme Insurance Brokers Limited",
+            vertical_count: verticals.length,
+            tier_count: (tiers as any[])?.length ?? 0,
+            pool_pct: 4.2,
+            note: "VPB pool for 17 EIBLCC business heads. Industry sweet spot: 3.5-5% of revenue, tier multiplier escalates above 110% achievement.",
+          }}
+        />
+      </div>
     </>
   );
 }

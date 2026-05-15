@@ -9,6 +9,7 @@ import DashboardKpisClient, { type DashKpi } from "@/components/dashboard/dashbo
 import KpiSecondary, { type SecondaryKpi } from "@/components/dashboard/kpi-secondary";
 import PLWaterfall from "@/components/dashboard/pl-waterfall";
 import HeroStrip from "@/components/dashboard/hero-strip";
+import AIInsightsCard from "@/components/ai/ai-insights-card";
 import EmptyState from "@/components/ui/empty-state";
 import { formatPct } from "@/lib/utils";
 
@@ -255,45 +256,26 @@ export default async function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2">
-          <Card>
-            <CardHeader
-              title="🤖 FINMIND Intelligence — Maya"
-              tag={{ label: "AI", tone: "purple" }}
-            />
-            <CardBody>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <Insight
-                  tone="info"
-                  title="Books Status"
-                  body={
-                    kpis
-                      ? `${kpis.je_count_posted ?? 0} entries posted · ${kpis.je_count_draft ?? 0} drafts`
-                      : "No entries yet — load demo data or post your first entry."
-                  }
-                />
-                <Insight
-                  tone={margin >= 20 ? "good" : margin >= 10 ? "info" : "warn"}
-                  title="Margin Health"
-                  body={
-                    revenue > 0
-                      ? `Net margin sitting at ${margin.toFixed(1)}% on ${formatINRUnit(revenue)} revenue.`
-                      : "Pending data."
-                  }
-                />
-                <Insight
-                  tone={expenseRatio > 80 ? "warn" : "good"}
-                  title="Cost Discipline"
-                  body={
-                    revenue > 0
-                      ? `Expense ratio is ${expenseRatio.toFixed(1)}% — ${
-                          expenseRatio > 80 ? "above" : "within"
-                        } healthy thresholds.`
-                      : "Pending data."
-                  }
-                />
-              </div>
-            </CardBody>
-          </Card>
+          <AIInsightsCard
+            page="dashboard"
+            density="wide"
+            context={{
+              org: org.name,
+              period: periodToday?.period_label,
+              revenue_inr: revenue,
+              expense_inr: expense,
+              ebitda_inr: netIncome,
+              ebitda_margin_pct: margin,
+              expense_ratio_pct: expenseRatio,
+              pat_est_inr: patEst,
+              je_posted: kpis?.je_count_posted ?? 0,
+              je_draft: kpis?.je_count_draft ?? 0,
+              headcount,
+              rev_per_hc_inr: revPerHc,
+              currency: "INR",
+              note: "Insurance broker MIS — compare to Indian insurance broking peers (25–32% EBITDA, 70% expense ratio, 22% salary-to-revenue).",
+            }}
+          />
         </div>
         <Card>
           <CardHeader title="Get Started" />
