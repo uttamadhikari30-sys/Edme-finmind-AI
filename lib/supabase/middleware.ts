@@ -50,5 +50,17 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // First-time login: force the user to set their own password before doing anything else
+  if (
+    user &&
+    (user.user_metadata as any)?.must_change_password === true &&
+    !path.startsWith("/force-password-change") &&
+    !path.startsWith("/api/")
+  ) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/force-password-change";
+    return NextResponse.redirect(url);
+  }
+
   return response;
 }

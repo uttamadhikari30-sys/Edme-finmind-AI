@@ -67,6 +67,7 @@ export default function UsersClient({
   const router = useRouter();
   const supabase = createClient();
   const [showInvite, setShowInvite] = useState(false);
+  const [mode, setMode] = useState<"direct" | "invite-link">("direct");
   const [inv, setInv] = useState({
     email: "",
     full_name: "",
@@ -76,6 +77,55 @@ export default function UsersClient({
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [success, setSuccess] = useState<{ email: string; link: string; emailSent: boolean } | null>(null);
+  const [directSuccess, setDirectSuccess] = useState<{
+    email: string;
+    full_name: string | null;
+    role: string;
+    temp_password: string;
+    email_sent: boolean;
+    email_error: string | null;
+  } | null>(null);
+
+  async function createUserDirect(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setErr(null);
+    setSuccess(null);
+    setDirectSuccess(null);
+
+    if (inv.role === "bh" && !inv.business_unit_id) {
+      setBusy(false);
+      setErr("Please select a vertical for the Business Head.");
+      return;
+    }
+
+    const res = await fetch("/api/admin/create-user", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: inv.email.trim().toLowerCase(),
+        full_name: inv.full_name || null,
+        role: inv.role,
+        business_unit_id: inv.role === "bh" ? inv.business_unit_id : null,
+      }),
+    });
+    const data = await res.json();
+    setBusy(false);
+    if (!res.ok) {
+      setErr(data?.error ?? "Could not create user");
+      return;
+    }
+    setDirectSuccess({
+      email: data.email,
+      full_name: data.full_name,
+      role: data.role,
+      temp_password: data.temp_password,
+      email_sent: Boolean(data.email_sent),
+      email_error: data.email_error ?? null,
+    });
+    setInv({ email: "", full_name: "", role: "finance", business_unit_id: "" });
+    router.refresh();
+  }
 
   async function createInvite(e: React.FormEvent) {
     e.preventDefault();
@@ -201,20 +251,45 @@ export default function UsersClient({
       {isAdmin && (
         <Card>
           <CardHeader
-            title="Invite a teammate"
+            title="Add a teammate"
             tag={{ label: "Admin", tone: "purple" }}
             right={
               <button
                 onClick={() => setShowInvite((v) => !v)}
                 className="px-3 py-1.5 rounded-lg bg-navy text-white text-xs font-semibold hover:bg-navy-800"
               >
-                {showInvite ? "Hide form" : "+ New invite"}
+                {showInvite ? "Hide form" : "+ New user"}
               </button>
             }
           />
           {showInvite && (
+            <CardBody className="border-b border-[var(--border-2)] pb-0">
+              <div className="flex gap-2 p-1 rounded-lg bg-bg-alt border border-[var(--border)] mb-4">
+                <button
+                  onClick={() => setMode("direct")}
+                  className={`flex-1 py-2 px-3 rounded-md text-[12.5px] font-semibold transition ${
+                    mode === "direct" ? "bg-navy text-white shadow-soft" : "text-ink-muted hover:text-navy"
+                  }`}
+                >
+                  🔐 Create user directly + send temp password
+                </button>
+                <button
+                  onClick={() => setMode("invite-link")}
+                  className={`flex-1 py-2 px-3 rounded-md text-[12.5px] font-semibold transition ${
+                    mode === "invite-link" ? "bg-navy text-white shadow-soft" : "text-ink-muted hover:text-navy"
+                  }`}
+                >
+                  ✉️ Send invite link (user signs up)
+                </button>
+              </div>
+            </CardBody>
+          )}
+          {showInvite && (
             <CardBody>
-              <form onSubmit={createInvite} className="space-y-3">
+              <form
+                onSubmit={mode === "direct" ? createUserDirect : createInvite}
+                className="space-y-3"
+              >
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <Field label="Email">
                     <input
@@ -293,10 +368,89 @@ export default function UsersClient({
                     disabled={busy}
                     className="rounded-lg bg-edred text-white px-5 py-2.5 text-sm font-semibold hover:bg-edred-600 disabled:opacity-60 shadow-soft"
                   >
-                    {busy ? "Sending…" : "✉ Invite & send OTP"}
+                    {busy
+                      ? mode === "direct"
+                        ? "Creating…"
+                        : "Sending…"
+                      : mode === "direct"
+                      ? "🔐 Create user & generate password"
+                      : "✉ Send invite link"}
                   </button>
                 </div>
               </form>
+
+              {directSuccess && (
+                <div className="mt-4 rounded-xl bg-edgreen-50 border border-edgreen/30 px-4 py-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-xl">{directSuccess.email_sent ? "📬" : "✅"}</span>
+                    <div className="text-[13px] font-bold text-edgreen">
+                      {directSuccess.email_sent
+                        ? `User created — temp password emailed to ${directSuccess.email}`
+                        : `User created — share these credentials with ${directSuccess.email}`}
+                    </div>
+                  </div>
+                  {directSuccess.email_sent ? (
+                    <div className="text-[11.5px] text-ink-muted mb-3 leading-relaxed">
+                      The user will be <b>forced to change the password</b> on first login.
+                      The temp password is also shown below as a backup in case the email is not received.
+                    </div>
+                  ) : directSuccess.email_error ? (
+                    <div className="text-[11px] text-edred bg-edred-50 border border-edred/20 rounded-lg px-3 py-2 mb-3 leading-relaxed">
+                      <b>Email not sent automatically.</b> {directSuccess.email_error} — share the
+                      temp password manually below.
+                    </div>
+                  ) : null}
+                  <div className="space-y-2.5 bg-white border border-edgreen/30 rounded-lg p-3 font-mono text-[12px]">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] uppercase tracking-wider text-ink-subtle w-24">Email</span>
+                      <code className="flex-1">{directSuccess.email}</code>
+                      <button
+                        onClick={() => navigator.clipboard?.writeText(directSuccess.email)}
+                        className="text-[10px] font-bold px-2 py-1 rounded bg-navy text-white"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] uppercase tracking-wider text-ink-subtle w-24">Temp Password</span>
+                      <code className="flex-1 font-bold text-edred select-all">{directSuccess.temp_password}</code>
+                      <button
+                        onClick={() => navigator.clipboard?.writeText(directSuccess.temp_password)}
+                        className="text-[10px] font-bold px-2 py-1 rounded bg-edred text-white"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] uppercase tracking-wider text-ink-subtle w-24">Login URL</span>
+                      <code className="flex-1 text-[11px] truncate">
+                        {typeof window !== "undefined" ? window.location.origin : ""}/login
+                      </code>
+                      <button
+                        onClick={() =>
+                          navigator.clipboard?.writeText(`${window.location.origin}/login`)
+                        }
+                        className="text-[10px] font-bold px-2 py-1 rounded bg-navy text-white"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  </div>
+                  <div className="mt-3 text-[11px] text-ink-muted leading-relaxed">
+                    ⚠ This temp password is shown <b>once</b>. Share it via WhatsApp, Teams or
+                    email. The user will be <b>forced to change it</b> on first login.
+                  </div>
+                  <button
+                    onClick={() => {
+                      const msg = `Welcome to FINMIND AI!\n\nLogin URL: ${window.location.origin}/login\nEmail: ${directSuccess.email}\nTemporary password: ${directSuccess.temp_password}\n\nYou'll be asked to set your own password on first login.`;
+                      navigator.clipboard?.writeText(msg);
+                    }}
+                    className="mt-3 px-3 py-1.5 rounded-lg bg-edgreen text-white text-[11.5px] font-semibold hover:brightness-110"
+                  >
+                    📋 Copy ready-to-send message
+                  </button>
+                </div>
+              )}
 
               {success && (
                 <div className="mt-4 rounded-xl bg-edgreen-50 border border-edgreen/30 px-4 py-4">

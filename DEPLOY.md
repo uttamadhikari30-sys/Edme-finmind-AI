@@ -35,9 +35,13 @@ git push -u origin main
 4. Root directory: **leave as `./`**.
 5. Build command: leave default (`next build`).
 6. Output directory: leave default.
-7. **Environment Variables** — add these two (both already in `.env.production`, but Vercel UI overrides take precedence):
+7. **Environment Variables** — add these (the public ones are in `.env.production`, but Vercel UI overrides take precedence):
    - `NEXT_PUBLIC_SUPABASE_URL` = `https://gdtqujtdsdmvvtnxjdks.supabase.co`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = `sb_publishable_FB_WD-hkoj4vLQEnLzAP8g_H5fb3ZB0`
+   - `SUPABASE_SERVICE_ROLE_KEY` = *(Supabase Dashboard → Settings → API → `service_role` key — NEVER expose in NEXT_PUBLIC_*)*. Required for the admin "Create user directly" flow.
+   - `RESEND_API_KEY` = *(from https://resend.com → API Keys)*. Enables auto-email of temp passwords to newly created users. If omitted, the admin UI falls back to showing the password on-screen for manual sharing.
+   - `EMAIL_FROM` = `FINMIND AI <noreply@yourdomain.com>` *(must be a Resend-verified sender domain — see https://resend.com/domains. While testing you can use `onboarding@resend.dev`.)*
+   - `APP_URL` = `https://your-deployment.vercel.app` *(optional — used as the login link in the welcome email; otherwise inferred from request origin.)*
 8. Click **Deploy**.
 
 The first build takes ~90 seconds. You'll get a URL like `https://finmind-ai-xxx.vercel.app`.
