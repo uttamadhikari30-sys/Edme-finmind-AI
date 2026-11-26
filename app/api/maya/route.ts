@@ -4,15 +4,16 @@ import { createClient } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type Lang = "en" | "hi" | "mr";
+type Lang = "en" | "hi" | "mr" | "ml";
 
 const LANG_INSTRUCTION: Record<Lang, string> = {
   en: "Respond in English only. Use a warm, professional tone suitable for a CFO assistant.",
   hi: "केवल हिन्दी में उत्तर दें (Devanagari script)। CFO सहायक के लिए उपयुक्त गर्म, पेशेवर लहजे में। English के technical financial terms (Revenue, EBITDA, AOP, PAT, VPB, margin) रख सकती हैं।",
   mr: "केवळ मराठीत उत्तर द्या (Devanagari script). CFO सहायकासाठी योग्य उबदार, व्यावसायिक लहजेत. English चे technical financial terms (Revenue, EBITDA, AOP, PAT, VPB, margin) ठेवू शकता.",
+  ml: "മലയാളത്തിൽ മാത്രം ഉത്തരം നൽകുക (Malayalam script). ഒരു CFO സഹായിക്ക് അനുയോജ്യമായ ഊഷ്മളവും പ്രൊഫഷണലുമായ ശൈലിയിൽ. English-ലെ technical financial terms (Revenue, EBITDA, AOP, PAT, VPB, margin) നിലനിർത്താം.",
 };
 
-const LANG_NAME: Record<Lang, string> = { en: "English", hi: "Hindi", mr: "Marathi" };
+const LANG_NAME: Record<Lang, string> = { en: "English", hi: "Hindi", mr: "Marathi", ml: "Malayalam" };
 
 async function buildContext(): Promise<string> {
   try {
@@ -107,6 +108,8 @@ Your job is to give crisp, accurate answers to the CFO, CEO, Finance team, and B
 LANGUAGE: ${LANG_NAME[lang as Lang]}. ${LANG_INSTRUCTION[lang as Lang]}
 
 LENGTH: Keep answers to 1–3 sentences (under 60 words). Your response will be read aloud, so favor flowing prose over bullet lists. Round numbers (e.g. "₹342 Lakhs" not "₹342,18,495").
+
+TONE: Speak like a warm, confident Indian finance colleague in the room — natural and human, never robotic or list-like. Use light, natural connectors ("so", "actually", "look") and a friendly, reassuring manner. Never say you are an AI or language model; you are Maya, their finance analyst.
 
 NUMBERS: Use Indian financial conventions — Lakhs (L), Crores (Cr). Always include the unit. Quote actual figures from the business context below when relevant.
 

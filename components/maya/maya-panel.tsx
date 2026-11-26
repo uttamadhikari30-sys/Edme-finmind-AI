@@ -3,31 +3,35 @@
 import { useEffect, useRef, useState } from "react";
 import { humanize } from "@/lib/maya/humanize";
 
-type Lang = "en" | "hi" | "mr";
+type Lang = "en" | "hi" | "mr" | "ml";
 type State = "idle" | "listening-wake" | "listening-question" | "thinking" | "speaking";
 
 const LANG_LABELS: Record<Lang, { name: string; flag: string; voice: string }> = {
   en: { name: "English",  flag: "🇬🇧", voice: "en-IN" },
   hi: { name: "हिन्दी",    flag: "🇮🇳", voice: "hi-IN" },
   mr: { name: "मराठी",     flag: "🇮🇳", voice: "mr-IN" },
+  ml: { name: "മലയാളം",   flag: "🇮🇳", voice: "ml-IN" },
 };
 
 const GREETINGS: Record<Lang, string> = {
   en: "Namaste. I'm Maya, your FINMIND AI assistant. Say 'Hey Maya' anytime to ask me a question. I can help with revenue, EBITDA, profit, vertical performance, and AOP.",
   hi: "नमस्ते। मैं Maya हूँ, आपकी FINMIND AI सहायक। कुछ भी पूछने के लिए 'Hey Maya' कहें। मैं Revenue, EBITDA, profit, vertical प्रदर्शन और AOP में सहायता कर सकती हूँ।",
   mr: "नमस्कार. मी Maya, तुमची FINMIND AI सहायक आहे. काहीही विचारण्यासाठी 'Hey Maya' म्हणा. मी Revenue, EBITDA, profit, vertical कामगिरी आणि AOP बाबत मदत करू शकते.",
+  ml: "നമസ്കാരം. ഞാൻ മായ, നിങ്ങളുടെ FINMIND AI സഹായി. എന്തെങ്കിലും ചോദിക്കാൻ 'Hey Maya' എന്ന് പറയൂ. Revenue, EBITDA, profit, vertical പ്രകടനം, AOP എന്നിവയിൽ എനിക്ക് സഹായിക്കാം.",
 };
 
 const WAKE_ACK: Record<Lang, string> = {
   en: "Yes, I'm listening.",
   hi: "हाँ, मैं सुन रही हूँ।",
   mr: "होय, मी ऐकत आहे.",
+  ml: "അതെ, ഞാൻ കേൾക്കുന്നു.",
 };
 
 const QUICK_PROMPTS: Record<Lang, string[]> = {
   en: ["Tell me the profit", "What is our revenue?", "How is EBITDA?", "Show worst vertical"],
   hi: ["Profit बताओ", "Revenue क्या है?", "EBITDA कैसा है?", "सबसे कम vertical दिखाओ"],
   mr: ["Profit सांगा", "Revenue किती आहे?", "EBITDA कशी आहे?", "सर्वात कमी vertical दाखवा"],
+  ml: ["Profit പറയൂ", "നമ്മുടെ Revenue എത്ര?", "EBITDA എങ്ങനെ?", "ഏറ്റവും കുറഞ്ഞ vertical കാണിക്കൂ"],
 };
 
 // Wake-word variants (case-insensitive substring match)
@@ -295,41 +299,49 @@ export default function MayaPanel({ open, onClose }: { open: boolean; onClose: (
         en: "Revenue this month is ₹342 Lakhs — 0.4% above AOP. Brokerage Income leads at ₹209L.",
         hi: "इस महीने Revenue ₹342 Lakhs है — AOP से 0.4% अधिक। Brokerage Income ₹209L के साथ सबसे आगे है।",
         mr: "या महिन्याचा Revenue ₹342 Lakhs आहे — AOP पेक्षा 0.4% जास्त. Brokerage Income ₹209L सह आघाडीवर आहे.",
+        ml: "ഈ മാസത്തെ Revenue ₹342 Lakhs ആണ് — AOP-യെക്കാൾ 0.4% കൂടുതൽ. Brokerage Income ₹209L-മായി മുന്നിൽ.",
       },
       profit: {
         en: "Net profit this month is ₹574 Lakhs. EBITDA stands at ₹851 Lakhs with a 28.2% margin. Year-to-date profit is up 12.3% versus last year.",
         hi: "इस महीने का Net Profit ₹574 Lakhs है। EBITDA ₹851 Lakhs है 28.2% margin के साथ। साल-दर-साल profit पिछले साल से 12.3% बढ़ा है।",
         mr: "या महिन्याचा Net Profit ₹574 Lakhs आहे. EBITDA ₹851 Lakhs आहे 28.2% margin सह. वर्ष-दर-वर्ष profit मागील वर्षाच्या तुलनेत 12.3% वाढला आहे.",
+        ml: "ഈ മാസത്തെ Net Profit ₹574 Lakhs ആണ്. EBITDA ₹851 Lakhs, 28.2% margin-ൽ. വർഷാരംഭം മുതൽ profit കഴിഞ്ഞ വർഷത്തെക്കാൾ 12.3% കൂടി.",
       },
       ebitda: {
         en: "EBITDA for the month is ₹851 Lakhs — 28.2% margin. Slightly below last year's 27.6% — watch overhead.",
         hi: "इस महीने EBITDA ₹851 Lakhs है — 28.2% margin। पिछले साल के 27.6% से थोड़ा कम — Overhead पर ध्यान दें।",
         mr: "या महिन्याचा EBITDA ₹851 Lakhs आहे — 28.2% margin. गेल्या वर्षीच्या 27.6% पेक्षा थोडा कमी — Overhead वर लक्ष ठेवा.",
+        ml: "ഈ മാസത്തെ EBITDA ₹851 Lakhs — 28.2% margin. കഴിഞ്ഞ വർഷത്തെ 27.6%-നെക്കാൾ അൽപ്പം കുറവ് — Overhead ശ്രദ്ധിക്കൂ.",
       },
       vertical: {
         en: "Lowest-performing vertical is Asheesh Handa's SME team at ₹2.37L — 5.7% below AOP. They need pipeline support.",
         hi: "सबसे कम performing vertical Asheesh Handa की SME team है ₹2.37L पर — AOP से 5.7% कम। Pipeline support की जरूरत है।",
         mr: "सर्वात कमी performing vertical Asheesh Handa ची SME team आहे ₹2.37L वर — AOP पेक्षा 5.7% कमी. Pipeline support हवी आहे.",
+        ml: "ഏറ്റവും കുറഞ്ഞ പ്രകടനമുള്ള vertical Asheesh Handa-യുടെ SME team ആണ്, ₹2.37L — AOP-യെക്കാൾ 5.7% കുറവ്. Pipeline support വേണം.",
       },
       aop: {
         en: "AOP achievement is 105.6% in April and 104.5% in September. 9 of 15 verticals are above target.",
         hi: "AOP achievement अप्रैल में 105.6% और सितंबर में 104.5% है। 15 में से 9 verticals target से ऊपर हैं।",
         mr: "AOP achievement एप्रिलमध्ये 105.6% आणि सप्टेंबरमध्ये 104.5% आहे. 15 पैकी 9 verticals target च्या वर आहेत.",
+        ml: "AOP achievement ഏപ്രിലിൽ 105.6%, സെപ്റ്റംബറിൽ 104.5%. 15-ൽ 9 verticals target-ന് മുകളിലാണ്.",
       },
       forecast: {
         en: "Full-year LE projects ₹3887 Lakhs revenue — 5.5% above AOP. EBITDA LE is ₹2414 Lakhs.",
         hi: "Full Year LE ₹3887 Lakhs revenue का अनुमान है — AOP से 5.5% अधिक। EBITDA LE ₹2414 Lakhs है।",
         mr: "Full Year LE ₹3887 Lakhs revenue चा अंदाज आहे — AOP पेक्षा 5.5% जास्त. EBITDA LE ₹2414 Lakhs आहे.",
+        ml: "Full-year LE ₹3887 Lakhs revenue പ്രതീക്ഷിക്കുന്നു — AOP-യെക്കാൾ 5.5% കൂടുതൽ. EBITDA LE ₹2414 Lakhs.",
       },
       vpb: {
         en: "VPB pool is ₹107 Lakhs at 84% — 9 of 15 verticals qualifying. 2 BHs below threshold need attention.",
         hi: "VPB pool ₹107 Lakhs 84% पर है — 15 में से 9 verticals qualify कर रहे हैं। 2 BHs below threshold पर ध्यान चाहिए।",
         mr: "VPB pool ₹107 Lakhs 84% वर आहे — 15 पैकी 9 verticals qualify होत आहेत. 2 BHs below threshold वर लक्ष द्यावे.",
+        ml: "VPB pool ₹107 Lakhs, 84%-ൽ — 15-ൽ 9 verticals qualify ചെയ്യുന്നു. threshold-ന് താഴെയുള്ള 2 BH-കൾക്ക് ശ്രദ്ധ വേണം.",
       },
       cashflow: {
         en: "Operating cash flow is ₹892 Lakhs, investing outflow is ₹245 Lakhs, financing is negative ₹128 Lakhs. Net cash position: ₹519 Lakhs — strong.",
         hi: "Operating cash flow ₹892 Lakhs है, Investing outflow ₹245 Lakhs, Financing negative ₹128 Lakhs। Net cash position ₹519 Lakhs — मज़बूत।",
         mr: "Operating cash flow ₹892 Lakhs आहे, Investing outflow ₹245 Lakhs, Financing negative ₹128 Lakhs. Net cash position ₹519 Lakhs — मजबूत.",
+        ml: "Operating cash flow ₹892 Lakhs, investing outflow ₹245 Lakhs, financing negative ₹128 Lakhs. Net cash position ₹519 Lakhs — ശക്തം.",
       },
     };
 
@@ -346,6 +358,7 @@ export default function MayaPanel({ open, onClose }: { open: boolean; onClose: (
       en: "I can help with revenue, profit, EBITDA, EBITDA margin, vertical performance, AOP, LE/forecast, VPB, and cash flow. Could you rephrase?",
       hi: "मैं Revenue, Profit, EBITDA, Margin, Vertical performance, AOP, LE/Forecast, VPB और Cash Flow में सहायता कर सकती हूँ। दोबारा कहें?",
       mr: "मी Revenue, Profit, EBITDA, Margin, Vertical performance, AOP, LE/Forecast, VPB आणि Cash Flow मध्ये मदत करू शकते. कृपया पुन्हा सांगा.",
+      ml: "Revenue, Profit, EBITDA, Margin, Vertical performance, AOP, LE/Forecast, VPB, Cash Flow എന്നിവയിൽ എനിക്ക് സഹായിക്കാം. വീണ്ടും പറയാമോ?",
     };
     return fallback[lang];
   }
@@ -554,7 +567,9 @@ export default function MayaPanel({ open, onClose }: { open: boolean; onClose: (
                 ? "Type or say 'Hey Maya…'"
                 : lang === "hi"
                 ? "लिखें या कहें 'Hey Maya…'"
-                : "लिहा किंवा म्हणा 'Hey Maya…'"
+                : lang === "mr"
+                ? "लिहा किंवा म्हणा 'Hey Maya…'"
+                : "ടൈപ്പ് ചെയ്യൂ അല്ലെങ്കിൽ 'Hey Maya…' എന്ന് പറയൂ"
             }
             className="flex-1 rounded-full border border-[var(--border)] bg-bg-alt px-4 py-2 text-sm focus:border-navy focus:bg-white outline-none"
           />

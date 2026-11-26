@@ -6,7 +6,7 @@
  * already read digits naturally in those languages, so numerals stay as is.
  */
 
-export type Lang = "en" | "hi" | "mr";
+export type Lang = "en" | "hi" | "mr" | "ml";
 
 const ONES = [
   "zero","one","two","three","four","five","six","seven","eight","nine",
@@ -80,6 +80,12 @@ function unitWord(unit: string, lang: Lang): string {
     if (u === "k") return "हजार";
     if (u === "m" || u === "mn") return "मिलियन";
   }
+  if (lang === "ml") {
+    if (u.startsWith("l")) return "ലക്ഷം";
+    if (u === "cr" || u.startsWith("c")) return "കോടി";
+    if (u === "k") return "ആയിരം";
+    if (u === "m" || u === "mn") return "മില്യൺ";
+  }
   if (u.startsWith("l")) return "lakhs";
   if (u === "cr" || u.startsWith("c")) return "crores";
   if (u === "k") return "thousand";
@@ -91,6 +97,7 @@ function currencyWord(symbol: string, lang: Lang): string {
   if (symbol === "₹") {
     if (lang === "hi") return "रुपये";
     if (lang === "mr") return "रुपये";
+    if (lang === "ml") return "രൂപ";
     return "rupees";
   }
   if (symbol === "$") return "dollars";
@@ -128,7 +135,7 @@ export function humanize(text: string, lang: Lang): string {
     const clean = parseFloat(num);
     if (isNaN(clean)) return _match;
     const numWords = lang === "en" ? numberToEnglish(clean) : num;
-    const pct = lang === "en" ? "percent" : "प्रतिशत";
+    const pct = lang === "en" ? "percent" : lang === "ml" ? "ശതമാനം" : "प्रतिशत";
     return ` ${numWords} ${pct} `;
   });
 
@@ -148,6 +155,9 @@ export function humanize(text: string, lang: Lang): string {
   } else if (lang === "mr") {
     out = out.replace(/\b(Lakhs?|L)\b/gi, "लाख");
     out = out.replace(/\b(Crores?|Cr)\b/gi, "कोटी");
+  } else if (lang === "ml") {
+    out = out.replace(/\b(Lakhs?|L)\b/gi, "ലക്ഷം");
+    out = out.replace(/\b(Crores?|Cr)\b/gi, "കോടി");
   }
 
   // Collapse whitespace
