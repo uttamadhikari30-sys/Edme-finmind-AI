@@ -15,17 +15,17 @@ const config: Config = {
       },
       colors: {
         navy: {
-          DEFAULT: "#1C3687",
+          DEFAULT: "rgb(var(--navy-rgb) / <alpha-value>)",
           50: "#e8ecf8",
           100: "#d3dbf1",
           500: "#2a4cc0",
-          700: "#1C3687",
+          700: "rgb(var(--navy-rgb) / <alpha-value>)",
           800: "#0f1e4e",
           900: "#0c1e50",
           950: "#050d24",
         },
         edred: {
-          DEFAULT: "#ED1B2F",
+          DEFAULT: "rgb(var(--red-rgb) / <alpha-value>)",
           50: "#fff0f1",
           600: "#b8101f",
         },

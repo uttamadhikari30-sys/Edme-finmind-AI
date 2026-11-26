@@ -25,6 +25,41 @@
   --shadow-2: 0 8px 40px rgba(28, 54, 135, 0.14);
   --sidebar: 256px;
   --header: 66px;
+  --navy-rgb: 28 54 135;
+  --red-rgb: 237 27 47;
+  --sidebar-grad: linear-gradient(180deg, #050d24 0%, #0c1e50 55%, #0e2260 100%);
+}
+
+/* ── Color themes (applied via data-theme on <html>) ─────────────────── */
+[data-theme="emerald"] {
+  --navy:#047857; --navy-2:#065f46; --navy-3:#10b981; --navy-4:#d1fae5; --navy-rgb:4 120 87;
+  --red:#f59e0b; --red-2:#b45309; --red-3:#fef3c7; --red-rgb:245 158 11;
+  --bg:#eefaf4; --bg-2:#dcf5ea; --border:rgba(4,120,87,0.12); --border-2:rgba(4,120,87,0.06);
+  --sidebar-grad:linear-gradient(180deg,#04231a 0%,#053a2a 55%,#065f46 100%);
+}
+[data-theme="purple"] {
+  --navy:#6d28d9; --navy-2:#4c1d95; --navy-3:#8b5cf6; --navy-4:#ede9fe; --navy-rgb:109 40 217;
+  --red:#ec4899; --red-2:#be185d; --red-3:#fce7f3; --red-rgb:236 72 153;
+  --bg:#f6f3fd; --bg-2:#ece5fb; --border:rgba(109,40,217,0.12); --border-2:rgba(109,40,217,0.06);
+  --sidebar-grad:linear-gradient(180deg,#1e1033 0%,#2e1065 55%,#4c1d95 100%);
+}
+[data-theme="slate"] {
+  --navy:#334155; --navy-2:#1e293b; --navy-3:#64748b; --navy-4:#e2e8f0; --navy-rgb:51 65 85;
+  --red:#0ea5e9; --red-2:#0369a1; --red-3:#e0f2fe; --red-rgb:14 165 233;
+  --bg:#f1f5f9; --bg-2:#e2e8f0; --border:rgba(51,65,85,0.14); --border-2:rgba(51,65,85,0.07);
+  --sidebar-grad:linear-gradient(180deg,#0b1220 0%,#1e293b 55%,#334155 100%);
+}
+[data-theme="teal"] {
+  --navy:#0f766e; --navy-2:#115e59; --navy-3:#14b8a6; --navy-4:#ccfbf1; --navy-rgb:15 118 110;
+  --red:#f97316; --red-2:#c2410c; --red-3:#ffedd5; --red-rgb:249 115 22;
+  --bg:#f0fbfa; --bg-2:#d9f6f3; --border:rgba(15,118,110,0.12); --border-2:rgba(15,118,110,0.06);
+  --sidebar-grad:linear-gradient(180deg,#042f2c 0%,#0a4d47 55%,#115e59 100%);
+}
+[data-theme="crimson"] {
+  --navy:#9f1239; --navy-2:#881337; --navy-3:#e11d48; --navy-4:#ffe4e6; --navy-rgb:159 18 57;
+  --red:#f59e0b; --red-2:#b45309; --red-3:#fef3c7; --red-rgb:245 158 11;
+  --bg:#fdf2f4; --bg-2:#fbe3e8; --border:rgba(159,18,57,0.12); --border-2:rgba(159,18,57,0.06);
+  --sidebar-grad:linear-gradient(180deg,#2a0611 0%,#4c0519 55%,#881337 100%);
 }
 
 * { -webkit-tap-highlight-color: transparent; }
@@ -39,7 +74,7 @@ html, body {
 
 /* App shell */
 .fm-sidebar {
-  background: linear-gradient(180deg, #050d24 0%, #0c1e50 55%, #0e2260 100%);
+  background: var(--sidebar-grad);
   box-shadow: 4px 0 28px rgba(0, 0, 0, 0.28);
 }
 .fm-sb-item {

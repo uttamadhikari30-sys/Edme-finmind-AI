@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import CurrencySelector from "@/components/shell/currency-selector";
 import UnitSelector from "@/components/shell/unit-selector";
+import ThemeSwitcher from "@/components/shell/theme-switcher";
 import MayaButton from "@/components/maya/maya-button";
 
 export default function Header({
@@ -39,11 +40,12 @@ export default function Header({
 
       <CurrencySelector />
       <UnitSelector />
+      <ThemeSwitcher />
       <MayaButton />
 
       <button
         onClick={signOut}
-        className="px-3 py-1.5 rounded-lg border border-[var(--border)] bg-bg-alt text-ink-muted text-[11.5px] font-semibold hover:border-edred hover:text-edred transition"
+        className="px-3 py-1.5 rounded-lg bg-[#ED1B2F] text-white text-[11.5px] font-semibold hover:bg-[#b8101f] transition shadow-[0_4px_14px_rgba(237,27,47,0.30)]"
       >
         Sign out
       </button>
