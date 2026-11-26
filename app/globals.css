@@ -148,3 +148,39 @@ html, body {
 /* Scrollbar styling for sidebar */
 .fm-sidebar nav::-webkit-scrollbar { display: none; }
 .fm-sidebar nav { scrollbar-width: none; }
+
+/* ── Auth / login premium ──────────────────────────────────────────── */
+@keyframes aurora {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  33% { transform: translate3d(-4%, 3%, 0) scale(1.12); }
+  66% { transform: translate3d(3%, -2%, 0) scale(1.06); }
+}
+.auth-aurora { animation: aurora 18s ease-in-out infinite; will-change: transform; }
+
+@keyframes floatY { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+.auth-float { animation: floatY 6s ease-in-out infinite; }
+
+@keyframes authCardIn {
+  from { opacity: 0; transform: translateY(14px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.auth-card-in { animation: authCardIn 0.5s cubic-bezier(0.22, 1, 0.36, 1); }
+
+/* Shimmering gradient border for the login card */
+.auth-card {
+  position: relative;
+  background: #fff;
+  border-radius: 22px;
+}
+.auth-card::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 23px;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(28,54,135,0.28), rgba(237,27,47,0.22) 45%, rgba(200,149,42,0.28));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}

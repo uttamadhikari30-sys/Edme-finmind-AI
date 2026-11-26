@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 
 type Mode = "password" | "otp";
@@ -43,115 +42,159 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-card border border-[var(--border)] p-8 lg:p-9 animate-fade-up">
-      <div className="text-center">
-        <Image
-          src="/edme-logo.png"
-          alt="Edme"
-          width={140}
-          height={36}
-          priority
-          style={{ height: "32px", width: "auto" }}
-          className="mx-auto"
-        />
-        <h1 className="mt-5 font-serif text-[26px] font-bold text-navy leading-tight">Welcome Back</h1>
-        <p className="text-[13px] text-ink-muted mt-1">
-          Edme Insurance Brokers Limited · FINMIND AI
-        </p>
-      </div>
-
-      <div className="my-6 border-t border-[var(--border-2)]" />
-
-      <form onSubmit={onSubmit} className="space-y-4">
-        <Field label="Email">
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-subtle text-[13px]">✉️</span>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoComplete="email"
-              className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] pl-9 pr-3 py-2.5 text-sm focus:border-navy focus:bg-white outline-none"
-              placeholder="you@edmeinsurance.com"
-            />
+    <div className="auth-card auth-card-in shadow-[0_30px_80px_-20px_rgba(28,54,135,0.35)]">
+      <div className="p-8 lg:p-9">
+        {/* Mobile-only brand (left panel is hidden on small screens) */}
+        <div className="lg:hidden text-center mb-6">
+          <div className="font-serif text-[34px] font-bold leading-none text-navy">
+            FINMIND <span className="text-edred">AI</span>
           </div>
-        </Field>
-
-        {/* Mode toggle */}
-        <div className="flex gap-2 p-1 rounded-lg bg-[var(--bg)] border border-[var(--border)]">
-          {(["password", "otp"] as Mode[]).map((m) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => setMode(m)}
-              className={`flex-1 py-1.5 rounded-md text-[11.5px] font-semibold transition ${
-                mode === m ? "bg-white text-navy shadow-soft" : "text-ink-subtle hover:text-navy"
-              }`}
-            >
-              {m === "password" ? "🔑 Password" : "✉️ OTP"}
-            </button>
-          ))}
         </div>
 
-        {mode === "password" && (
-          <Field
-            label="Password"
-            right={
-              <Link href="/forgot-password" className="text-[10.5px] text-navy hover:underline font-semibold">
-                Forgot Password
-              </Link>
-            }
-          >
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-subtle text-[13px]">🔒</span>
+        <div className="text-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/edme-logo.png"
+            alt="Edme"
+            style={{ height: "30px", width: "auto" }}
+            className="mx-auto"
+          />
+          <h1 className="mt-5 font-serif text-[27px] font-bold text-navy leading-tight">
+            Welcome back
+          </h1>
+          <p className="text-[12.5px] text-ink-muted mt-1.5">
+            Sign in to your <span className="font-semibold text-ink">FINMIND AI</span> workspace
+          </p>
+        </div>
+
+        <form onSubmit={onSubmit} className="mt-7 space-y-4">
+          {/* Email */}
+          <Field label="Work email">
+            <div className="relative group">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-subtle group-focus-within:text-navy transition">
+                <MailIcon />
+              </span>
               <input
-                type={showPwd ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
-                autoComplete="current-password"
-                className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] pl-9 pr-10 py-2.5 text-sm focus:border-navy focus:bg-white outline-none"
-                placeholder="••••••••"
+                autoComplete="email"
+                className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] pl-11 pr-3 py-3 text-sm text-ink focus:border-navy focus:bg-white focus:ring-4 focus:ring-navy/10 outline-none transition"
+                placeholder="you@edmeinsurance.com"
               />
-              <button
-                type="button"
-                onClick={() => setShowPwd((v) => !v)}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-subtle text-[13px] px-1"
-                tabIndex={-1}
-                aria-label={showPwd ? "Hide password" : "Show password"}
-              >
-                {showPwd ? "🙈" : "👁️"}
-              </button>
             </div>
           </Field>
-        )}
 
-        {error && (
-          <div className="text-[11.5px] font-medium text-edred bg-edred-50 border border-edred/20 rounded-lg px-3 py-2">
-            {error}
+          {/* Mode toggle */}
+          <div className="flex gap-1 p-1 rounded-xl bg-[var(--bg)] border border-[var(--border)]">
+            {(["password", "otp"] as Mode[]).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setMode(m)}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11.5px] font-semibold transition ${
+                  mode === m
+                    ? "bg-white text-navy shadow-[0_2px_8px_rgba(28,54,135,0.10)]"
+                    : "text-ink-subtle hover:text-navy"
+                }`}
+              >
+                {m === "password" ? <LockIcon small /> : <MailIcon small />}
+                {m === "password" ? "Password" : "Email link"}
+              </button>
+            ))}
           </div>
-        )}
-        {info && (
-          <div className="text-[11.5px] font-medium text-edgreen bg-edgreen-50 border border-edgreen/20 rounded-lg px-3 py-2">
-            {info}
-          </div>
-        )}
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded-lg text-white font-semibold text-[14px] py-3 transition disabled:opacity-60 hover:brightness-110 shadow-[0_8px_24px_rgba(237,27,47,0.35)]"
-          style={{ background: "linear-gradient(135deg,#ED1B2F 0%,#b8101f 100%)" }}
-        >
-          {loading
-            ? mode === "password" ? "Signing in…" : "Sending link…"
-            : <>Sign in to FINMIND AI <span className="ml-1">→</span></>}
-        </button>
-      </form>
+          {/* Password */}
+          {mode === "password" && (
+            <Field
+              label="Password"
+              right={
+                <Link
+                  href="/forgot-password"
+                  className="text-[10.5px] text-navy hover:underline font-semibold"
+                >
+                  Forgot password?
+                </Link>
+              }
+            >
+              <div className="relative group">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-subtle group-focus-within:text-navy transition">
+                  <LockIcon />
+                </span>
+                <input
+                  type={showPwd ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] pl-11 pr-11 py-3 text-sm text-ink focus:border-navy focus:bg-white focus:ring-4 focus:ring-navy/10 outline-none transition"
+                  placeholder="Enter your password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPwd((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-subtle hover:text-navy transition"
+                  tabIndex={-1}
+                  aria-label={showPwd ? "Hide password" : "Show password"}
+                >
+                  {showPwd ? <EyeOffIcon /> : <EyeIcon />}
+                </button>
+              </div>
+            </Field>
+          )}
 
-      <div className="mt-5 text-center text-[11px] text-ink-subtle">
-        🔐 256-bit SSL · Edme Insurance Brokers Limited · Strictly Confidential
+          {mode === "otp" && (
+            <p className="text-[11.5px] text-ink-muted bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 leading-relaxed">
+              We&apos;ll email you a secure one-time link — no password needed.
+            </p>
+          )}
+
+          {error && (
+            <div className="flex items-start gap-2 text-[11.5px] font-medium text-edred bg-edred-50 border border-edred/20 rounded-xl px-3.5 py-2.5">
+              <span className="mt-px">⚠️</span>
+              <span>{error}</span>
+            </div>
+          )}
+          {info && (
+            <div className="flex items-start gap-2 text-[11.5px] font-medium text-edgreen bg-edgreen-50 border border-edgreen/20 rounded-xl px-3.5 py-2.5">
+              <span className="mt-px">✉️</span>
+              <span>{info}</span>
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="group relative w-full overflow-hidden rounded-xl text-white font-semibold text-[14px] py-3.5 transition-all disabled:opacity-60 hover:-translate-y-0.5 shadow-[0_12px_28px_-8px_rgba(237,27,47,0.55)]"
+            style={{ background: "linear-gradient(135deg,#ED1B2F 0%,#b8101f 100%)" }}
+          >
+            <span className="relative z-10 flex items-center justify-center gap-1.5">
+              {loading
+                ? mode === "password"
+                  ? "Signing in…"
+                  : "Sending link…"
+                : (
+                  <>
+                    {mode === "password" ? "Sign in to FINMIND AI" : "Email me a login link"}
+                    <ArrowIcon />
+                  </>
+                )}
+            </span>
+          </button>
+        </form>
+
+        <div className="mt-6 text-center text-[12px] text-ink-muted">
+          New to FINMIND AI?{" "}
+          <Link href="/signup" className="text-navy font-semibold hover:underline">
+            Create an account
+          </Link>
+        </div>
+
+        <div className="mt-6 pt-5 border-t border-[var(--border-2)] flex items-center justify-center gap-1.5 text-[10.5px] text-ink-subtle">
+          <LockIcon small />
+          256-bit SSL · Edme Insurance Brokers Limited · Strictly Confidential
+        </div>
       </div>
     </div>
   );
@@ -169,10 +212,55 @@ function Field({
   return (
     <div>
       <div className="flex items-center justify-between mb-1.5">
-        <label className="text-[10.5px] uppercase tracking-[1.5px] font-bold text-ink-subtle">{label}</label>
+        <label className="text-[10.5px] uppercase tracking-[1.5px] font-bold text-ink-subtle">
+          {label}
+        </label>
         {right}
       </div>
       {children}
     </div>
+  );
+}
+
+/* ── Inline icons (premium, theme-agnostic) ──────────────────────────── */
+function MailIcon({ small }: { small?: boolean }) {
+  const s = small ? 13 : 17;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="4" width="20" height="16" rx="2.5" />
+      <path d="m3 7 9 6 9-6" />
+    </svg>
+  );
+}
+function LockIcon({ small }: { small?: boolean }) {
+  const s = small ? 13 : 17;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="11" width="16" height="10" rx="2.5" />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+    </svg>
+  );
+}
+function EyeIcon() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+function EyeOffIcon() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9.9 4.24A9.1 9.1 0 0 1 12 4c6.5 0 10 7 10 7a13.2 13.2 0 0 1-1.67 2.43M6.6 6.6A13.2 13.2 0 0 0 2 11s3.5 7 10 7a9.1 9.1 0 0 0 4.3-1.06" />
+      <path d="M3 3l18 18" />
+    </svg>
+  );
+}
+function ArrowIcon() {
+  return (
+    <svg className="transition-transform group-hover:translate-x-0.5" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 12h14M13 6l6 6-6 6" />
+    </svg>
   );
 }
