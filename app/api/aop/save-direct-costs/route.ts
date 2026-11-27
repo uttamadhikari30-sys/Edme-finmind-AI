@@ -5,13 +5,16 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * POST /api/aop/save-direct-costs
- * Body: { fiscal_year, business_unit_id, lines: [{ label, amount }] }
+ * POST /api/aop/save-direct-costs   (Finance overhead entry)
+ * Body: { fiscal_year, business_unit_id, lines: [{ category, label, amount }] }
+ *   category ∈ "mid_office" | "back_office"
  *
- * Finance enters a vertical's DIRECT costs (rent, utilities, travel, etc.).
- * Replaces the existing direct cost lines for that vertical + FY.
- * Business Heads cannot enter direct costs.
+ * Finance enters a vertical's MID-OFFICE and BACK-OFFICE overhead.
+ * Business Heads cannot see or enter these. Replaces the existing
+ * mid/back-office lines for that vertical + FY. Blocked once overhead is frozen.
  */
+const FINANCE_CATEGORIES = ["mid_office", "back_office"];
+
 export async function POST(req: NextRequest) {
   const supabase = createClient();
   const {
@@ -30,7 +33,7 @@ export async function POST(req: NextRequest) {
   const role = ((member as any).role as string)?.toLowerCase();
 
   if (role === "bh") {
-    return NextResponse.json({ error: "Direct costs are entered by Finance." }, { status: 403 });
+    return NextResponse.json({ error: "Overhead is entered by Finance." }, { status: 403 });
   }
 
   const body = (await req.json()) as { fiscal_year?: string; business_unit_id?: string; lines?: any[] };
@@ -39,7 +42,6 @@ export async function POST(req: NextRequest) {
   if (!fy) return NextResponse.json({ error: "fiscal_year required" }, { status: 400 });
   if (!buId) return NextResponse.json({ error: "business_unit_id required" }, { status: 400 });
 
-  // The vertical must belong to this org
   const { data: bu } = await supabase
     .from("business_units")
     .select("id")
@@ -48,33 +50,33 @@ export async function POST(req: NextRequest) {
     .maybeSingle();
   if (!bu) return NextResponse.json({ error: "Unknown vertical." }, { status: 400 });
 
-  // Guard against a frozen AOP
-  const { data: ver } = await supabase
-    .from("aop_versions")
-    .select("status")
+  // Once Finance freezes overhead, it is locked for all verticals.
+  const { data: oh } = await supabase
+    .from("aop_overhead_status")
+    .select("frozen")
     .eq("org_id", orgId)
     .eq("fiscal_year", fy)
     .maybeSingle();
-  if (ver && ["frozen", "approved"].includes((ver as any).status)) {
-    return NextResponse.json({ error: `AOP ${fy} is locked.` }, { status: 409 });
+  if ((oh as any)?.frozen) {
+    return NextResponse.json({ error: `Overhead for ${fy} is frozen.` }, { status: 409 });
   }
 
-  // Replace the direct cost lines for this vertical + FY
+  // Replace the mid/back-office lines for this vertical + FY
   await supabase
     .from("aop_cost_lines")
     .delete()
     .eq("org_id", orgId)
     .eq("business_unit_id", buId)
     .eq("fiscal_year", fy)
-    .eq("category", "direct");
+    .in("category", FINANCE_CATEGORIES);
 
   const rows = (body.lines ?? [])
-    .filter((l) => l && (l.label || l.amount))
+    .filter((l) => l && FINANCE_CATEGORIES.includes(l.category) && (l.label || l.amount))
     .map((l) => ({
       org_id: orgId,
       fiscal_year: fy,
       business_unit_id: buId,
-      category: "direct",
+      category: l.category,
       label: l.label ?? null,
       headcount: 0,
       ctc_annual: 0,

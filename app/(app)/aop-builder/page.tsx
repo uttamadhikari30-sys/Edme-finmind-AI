@@ -98,16 +98,29 @@ export default async function AopBuilderPage() {
     .select("category, label, headcount, ctc_annual, amount")
     .eq("org_id", orgId)
     .eq("business_unit_id", bu.id)
-    .eq("fiscal_year", PLAN_FY)
-    .in("category", ["hiring", "mid_office", "back_office"]);
+    .eq("fiscal_year", PLAN_FY);
 
-  const costLines: CostLine[] = (costs ?? []).map((c: any) => ({
-    category: c.category,
-    label: c.label ?? "",
-    headcount: Number(c.headcount) || 0,
-    ctc_annual: Number(c.ctc_annual) || 0,
-    amount: Number(c.amount) || 0,
-  }));
+  // The BH owns hiring + direct; mid/back-office are Finance overhead (not editable here).
+  const costLines: CostLine[] = (costs ?? [])
+    .filter((c: any) => c.category === "hiring" || c.category === "direct")
+    .map((c: any) => ({
+      category: c.category,
+      label: c.label ?? "",
+      headcount: Number(c.headcount) || 0,
+      ctc_annual: Number(c.ctc_annual) || 0,
+      amount: Number(c.amount) || 0,
+    }));
+  const overheadCost = (costs ?? [])
+    .filter((c: any) => c.category === "mid_office" || c.category === "back_office")
+    .reduce((s: number, c: any) => s + (Number(c.amount) || 0), 0);
+
+  const { data: oh } = await supabase
+    .from("aop_overhead_status")
+    .select("frozen")
+    .eq("org_id", orgId)
+    .eq("fiscal_year", PLAN_FY)
+    .maybeSingle();
+  const overheadFrozen = !!(oh as any)?.frozen;
 
   return (
     <>
@@ -126,6 +139,8 @@ export default async function AopBuilderPage() {
           fiscalYear={PLAN_FY}
           verticalName={bu.name}
           committedBrokerage={committedBrokerage}
+          overheadCost={overheadCost}
+          overheadFrozen={overheadFrozen}
           initialLines={costLines}
         />
       </div>

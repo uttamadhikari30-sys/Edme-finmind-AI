@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
 import PageHeader from "@/components/ui/page-header";
-import DirectCostClient, { type VerticalCost } from "@/components/aop/direct-cost-client";
+import DirectCostClient, { type VerticalCost, type OverheadLine } from "@/components/aop/direct-cost-client";
 
 export const dynamic = "force-dynamic";
 
@@ -55,37 +55,46 @@ export default async function AopCostsPage() {
     brokByBu.set(p.business_unit_id, (brokByBu.get(p.business_unit_id) ?? 0) + b);
   });
 
-  const peopleByBu = new Map<string, number>();
-  const directByBu = new Map<string, { label: string; amount: number }[]>();
+  // BH cost = hiring + direct; overhead lines = mid + back office (Finance-owned)
+  const bhCostByBu = new Map<string, number>();
+  const overheadByBu = new Map<string, OverheadLine[]>();
   (costs ?? []).forEach((c: any) => {
-    if (c.category === "direct") {
-      const arr = directByBu.get(c.business_unit_id) ?? [];
-      arr.push({ label: c.label ?? "", amount: Number(c.amount) || 0 });
-      directByBu.set(c.business_unit_id, arr);
-    } else {
-      peopleByBu.set(c.business_unit_id, (peopleByBu.get(c.business_unit_id) ?? 0) + (Number(c.amount) || 0));
+    if (c.category === "mid_office" || c.category === "back_office") {
+      const arr = overheadByBu.get(c.business_unit_id) ?? [];
+      arr.push({ category: c.category, label: c.label ?? "", amount: Number(c.amount) || 0 });
+      overheadByBu.set(c.business_unit_id, arr);
+    } else if (c.category === "hiring" || c.category === "direct") {
+      bhCostByBu.set(c.business_unit_id, (bhCostByBu.get(c.business_unit_id) ?? 0) + (Number(c.amount) || 0));
     }
   });
+
+  const { data: oh } = await supabase
+    .from("aop_overhead_status")
+    .select("frozen")
+    .eq("org_id", orgId)
+    .eq("fiscal_year", PLAN_FY)
+    .maybeSingle();
+  const frozen = !!(oh as any)?.frozen;
 
   const verticals: VerticalCost[] = (bus ?? []).map((b: any) => ({
     id: b.id,
     code: b.code,
     name: b.name,
     committedBrokerage: brokByBu.get(b.id) ?? 0,
-    peopleCost: peopleByBu.get(b.id) ?? 0,
-    directLines: directByBu.get(b.id) ?? [],
+    bhCost: bhCostByBu.get(b.id) ?? 0,
+    lines: overheadByBu.get(b.id) ?? [],
   }));
 
   return (
     <>
       <PageHeader
-        title="Direct Costs (Finance)"
-        subtitle={`${PLAN_FY} · rent, travel, utilities and other direct costs — entered per vertical by Finance`}
+        title="Overhead (Finance)"
+        subtitle={`${PLAN_FY} · mid-office & back-office overhead per vertical — freeze to unlock each Business Head's full P&L`}
       />
       {verticals.length === 0 ? (
         <div className="text-[13px] text-ink-muted">No active verticals yet.</div>
       ) : (
-        <DirectCostClient fiscalYear={PLAN_FY} verticals={verticals} />
+        <DirectCostClient fiscalYear={PLAN_FY} verticals={verticals} frozen={frozen} />
       )}
     </>
   );

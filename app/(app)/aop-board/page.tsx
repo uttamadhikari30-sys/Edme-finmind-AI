@@ -70,10 +70,12 @@ export default async function AopBoardPage() {
     if (!counts) return;
     brok.set(p.business_unit_id, (brok.get(p.business_unit_id) ?? 0) + (Number(p.planned_premium) * Number(p.brokerage_pct)) / 100);
   });
+  // BH cost = hiring + direct; overhead = mid-office + back-office (Finance)
   const people = new Map<string, number>();
   const direct = new Map<string, number>();
   (costs ?? []).forEach((c: any) => {
-    const m = c.category === "direct" ? direct : people;
+    const isOverhead = c.category === "mid_office" || c.category === "back_office";
+    const m = isOverhead ? direct : people;
     m.set(c.business_unit_id, (m.get(c.business_unit_id) ?? 0) + (Number(c.amount) || 0));
   });
   const basis = new Map<string, number>();
@@ -133,8 +135,8 @@ export default async function AopBoardPage() {
               <tr>
                 <th>Vertical</th>
                 <th className="r">Committed Brokerage</th>
-                <th className="r">People Cost</th>
-                <th className="r">Direct Cost</th>
+                <th className="r">BH Cost</th>
+                <th className="r">Overhead</th>
                 <th className="r">AOP Profit</th>
                 <th className="r">Margin</th>
                 <th className="r">Growth vs {BASIS_FY}</th>

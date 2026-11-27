@@ -8,11 +8,13 @@ export const dynamic = "force-dynamic";
  * POST /api/aop/save-costs
  * Body: { fiscal_year, lines: [{ category, label, headcount, ctc_annual, amount }] }
  *
- * A Business Head saves their vertical's cost plan (hiring, mid-office,
- * back-office). Replaces their existing cost lines for that vertical + FY.
+ * A Business Head saves their vertical's own cost plan: new hiring and
+ * direct costs (rent, travel, etc.). Mid-office and back-office are entered
+ * by Finance and are NOT visible to the Business Head.
+ * Replaces the BH's existing cost lines for that vertical + FY.
  * For hiring lines, amount = headcount × ctc_annual.
  */
-const BH_CATEGORIES = ["hiring", "mid_office", "back_office"];
+const BH_CATEGORIES = ["hiring", "direct"];
 
 export async function POST(req: NextRequest) {
   const supabase = createClient();
