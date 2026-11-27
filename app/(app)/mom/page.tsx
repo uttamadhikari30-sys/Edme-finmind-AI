@@ -123,6 +123,7 @@ export default async function MoMPLPage() {
         monthly={(monthly as any[]) ?? []}
         monthlyBudget={monthlyBudget}
         bus={scopeBuId ? (bus ?? []).filter((b: any) => b.id === scopeBuId) : bus ?? []}
+        lockVertical={!!scopeBuId}
         revenueByAccount={revenueByAccount}
         expenseByAccount={expenseByAccount}
         aopByAccount={aopByAccount}

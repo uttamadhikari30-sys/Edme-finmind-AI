@@ -310,7 +310,12 @@ export default async function DashboardPage() {
 
       <DashboardControls
         periodLabel={periodToday?.period_label ?? "—"}
-        verticals={(verticalsList as any[]) ?? []}
+        verticals={
+          scopeBU
+            ? ((verticalsList as any[]) ?? []).filter((v) => v.id === scopeBU!.id)
+            : (verticalsList as any[]) ?? []
+        }
+        lockVertical={!!scopeBU}
       />
 
       <DashboardKpisClient kpis={mainKpis} />

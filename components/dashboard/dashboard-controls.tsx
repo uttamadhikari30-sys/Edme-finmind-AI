@@ -10,14 +10,16 @@ type Drill = "ftm" | "ytd" | "mom";
 export default function DashboardControls({
   periodLabel,
   verticals = [],
+  lockVertical = false,
 }: {
   periodLabel: string;
   verticals?: { id: string; code: string; name: string }[];
+  lockVertical?: boolean;
 }) {
   const router = useRouter();
   const [drill, setDrill] = useState<Drill>("ftm");
   const [view, setView] = useState<"actual" | "aop" | "py" | "le">("aop");
-  const [vertical, setVertical] = useState("");
+  const [vertical, setVertical] = useState(lockVertical && verticals[0] ? verticals[0].id : "");
 
   function pickVertical(v: string) {
     setVertical(v);
@@ -53,9 +55,10 @@ export default function DashboardControls({
           <select
             value={vertical}
             onChange={(e) => pickVertical(e.target.value)}
-            className="text-[12px] font-semibold text-navy bg-transparent outline-none cursor-pointer max-w-[200px]"
+            disabled={lockVertical}
+            className="text-[12px] font-semibold text-navy bg-transparent outline-none cursor-pointer max-w-[200px] disabled:cursor-not-allowed"
           >
-            <option value="">Company — Consolidated</option>
+            {!lockVertical && <option value="">Company — Consolidated</option>}
             {verticals.map((v) => (
               <option key={v.id} value={v.id}>
                 {v.code} · {v.name}

@@ -35,6 +35,7 @@ export default function MoMTrackerClient({
   revenueByAccount,
   expenseByAccount,
   aopByAccount,
+  lockVertical = false,
 }: {
   periods: Period[];
   monthly: Monthly[];
@@ -43,11 +44,12 @@ export default function MoMTrackerClient({
   revenueByAccount: Bucket;
   expenseByAccount: Bucket;
   aopByAccount: Bucket;
+  lockVertical?: boolean;
 }) {
   const currency = useCurrency();
   const today = new Date().toISOString().slice(0, 10);
   const [selectedMonth, setSelectedMonth] = useState<string | "all">("all");
-  const [vertical, setVertical] = useState<string>("");
+  const [vertical, setVertical] = useState<string>(lockVertical && bus[0] ? bus[0].id : "");
 
   const monthlyByPeriod = new Map<string, Monthly>();
   monthly.forEach((m) => monthlyByPeriod.set(m.period_id, m));
@@ -141,9 +143,10 @@ export default function MoMTrackerClient({
           <select
             value={vertical}
             onChange={(e) => setVertical(e.target.value)}
-            className="flex-1 max-w-md rounded-lg border border-[var(--border)] bg-bg-alt px-3 py-2 text-[12px] font-semibold text-navy focus:border-navy focus:bg-white outline-none"
+            disabled={lockVertical}
+            className="flex-1 max-w-md rounded-lg border border-[var(--border)] bg-bg-alt px-3 py-2 text-[12px] font-semibold text-navy focus:border-navy focus:bg-white outline-none disabled:opacity-80 disabled:cursor-not-allowed"
           >
-            <option value="">Company — Consolidated</option>
+            {!lockVertical && <option value="">Company — Consolidated</option>}
             {bus.map((b) => (
               <option key={b.id} value={b.id}>{b.code} · {b.name}</option>
             ))}
