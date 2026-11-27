@@ -22,9 +22,14 @@ export default async function DashboardPage() {
   await requireUser();
   const supabase = createClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   const { data: membership } = (await supabase
     .from("org_members")
     .select("org_id, role, full_name, organizations(name)")
+    .eq("user_id", user?.id ?? "")
     .limit(1)
     .single()) as { data: any };
 
@@ -40,9 +45,6 @@ export default async function DashboardPage() {
     .eq("is_active", true)
     .order("code");
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
   const displayName =
     (membership.full_name as string | null) ||
     (user?.user_metadata?.full_name as string | undefined) ||
@@ -147,18 +149,17 @@ export default async function DashboardPage() {
   // ---- Live KPI ticker (floating numbers) --------------------------------
   const ytdRev = monthly.reduce((s: number, m: any) => s + m.revenue, 0);
   const ytdNet = monthly.reduce((s: number, m: any) => s + m.net_income, 0);
+  const ytdMargin = ytdRev > 0 ? (ytdNet / ytdRev) * 100 : 0;
   const L = (v: number) => `₹${(v / 1e5).toFixed(2)} L`;
+  // Top scroller = YTD figures
   const tickerItems: TickerItem[] =
     revenue > 0
       ? [
-          { label: "Revenue", value: L(revenue) },
-          { label: "EBITDA", value: L(netIncome), delta: `${margin.toFixed(1)}%`, up: margin >= 20 },
-          { label: "Margin", value: `${margin.toFixed(1)}%`, delta: "mgn", up: margin >= 20 },
-          { label: "PAT (Est.)", value: L(patEst) },
-          { label: "Expense Ratio", value: `${expenseRatio.toFixed(1)}%`, delta: "vs 65%", up: expenseRatio <= 65 },
-          { label: "Rev / HC", value: L(revPerHc) },
           { label: "YTD Revenue", value: L(ytdRev) },
-          { label: "YTD EBITDA", value: L(ytdNet) },
+          { label: "YTD EBITDA", value: L(ytdNet), delta: `${ytdMargin.toFixed(1)}%`, up: ytdMargin >= 20 },
+          { label: "YTD Margin", value: `${ytdMargin.toFixed(1)}%`, delta: "mgn", up: ytdMargin >= 20 },
+          { label: "YTD PAT (Est.)", value: L(ytdNet > 0 ? ytdNet * 0.75 : ytdNet) },
+          { label: "Rev / HC", value: L(revPerHc) },
           { label: "Headcount", value: `${headcount}` },
         ]
       : [];
@@ -224,15 +225,15 @@ export default async function DashboardPage() {
   // Live alerts — computed from real numbers
   const alerts: { dot: "amber" | "green" | "red" | "navy"; text: string }[] = [];
   if (revenue > 0) {
-    alerts.push({ dot: margin >= 25 ? "green" : "amber", text: `EBITDA margin ${margin.toFixed(1)}%` });
+    // Bottom scroller = this-month (FTM) figures
+    alerts.push({ dot: "navy", text: `FTM Revenue ${L(revenue)}` });
+    alerts.push({ dot: "green", text: `FTM EBITDA ${L(netIncome)}` });
+    alerts.push({ dot: margin >= 25 ? "green" : "amber", text: `FTM Margin ${margin.toFixed(1)}%` });
+    alerts.push({ dot: "green", text: `FTM PAT (est.) ${L(patEst)}` });
     alerts.push({
       dot: expenseRatio <= 65 ? "green" : expenseRatio <= 80 ? "amber" : "red",
       text: `Expense ratio ${expenseRatio.toFixed(1)}% (target < 65%)`,
     });
-    alerts.push({ dot: "navy", text: `Revenue ${L(revenue)} this period` });
-    alerts.push({ dot: "navy", text: `YTD Revenue ${L(ytdRev)} · EBITDA ${L(ytdNet)}` });
-    alerts.push({ dot: "green", text: `PAT (est.) ${L(patEst)}` });
-    alerts.push({ dot: "navy", text: `${headcount} business heads · Rev/HC ${L(revPerHc)}` });
     if (kpis?.je_count_draft > 0)
       alerts.push({ dot: "amber", text: `${kpis.je_count_draft} draft entries pending` });
   } else {

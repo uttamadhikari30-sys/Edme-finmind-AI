@@ -9,18 +9,19 @@ export default async function BudgetAopPage() {
   await requireUser();
   const supabase = createClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   const { data: membership } = (await supabase
     .from("org_members")
     .select("org_id, role")
+    .eq("user_id", user?.id ?? "")
     .limit(1)
     .single()) as { data: { org_id: string; role: string } | null };
   if (!membership) return null;
   const orgId = membership.org_id;
   const role = membership.role;
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
   // A Business Head sees only their own vertical's AOP.
   let scopeBuId: string | null = null;
