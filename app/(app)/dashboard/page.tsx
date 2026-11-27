@@ -159,7 +159,6 @@ export default async function DashboardPage() {
           { label: "Rev / HC", value: L(revPerHc) },
           { label: "YTD Revenue", value: L(ytdRev) },
           { label: "YTD EBITDA", value: L(ytdNet) },
-          { label: "Posted JEs", value: `${kpis?.je_count_posted ?? 0}` },
           { label: "Headcount", value: `${headcount}` },
         ]
       : [];
@@ -233,7 +232,6 @@ export default async function DashboardPage() {
     alerts.push({ dot: "navy", text: `Revenue ${L(revenue)} this period` });
     alerts.push({ dot: "navy", text: `YTD Revenue ${L(ytdRev)} · EBITDA ${L(ytdNet)}` });
     alerts.push({ dot: "green", text: `PAT (est.) ${L(patEst)}` });
-    alerts.push({ dot: "navy", text: `${kpis?.je_count_posted ?? 0} entries posted this period` });
     alerts.push({ dot: "navy", text: `${headcount} business heads · Rev/HC ${L(revPerHc)}` });
     if (kpis?.je_count_draft > 0)
       alerts.push({ dot: "amber", text: `${kpis.je_count_draft} draft entries pending` });
@@ -307,13 +305,12 @@ export default async function DashboardPage() {
       />
 
       {tickerItems.length > 0 && <KpiTicker items={tickerItems} />}
+      <LiveAlertsRibbon alerts={alerts} />
 
       <DashboardControls
         periodLabel={periodToday?.period_label ?? "—"}
         verticals={(verticalsList as any[]) ?? []}
       />
-
-      <LiveAlertsRibbon alerts={alerts} />
 
       <DashboardKpisClient kpis={mainKpis} />
       <KpiSecondary kpis={secondaryKpis} />

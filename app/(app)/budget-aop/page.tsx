@@ -11,13 +11,30 @@ export default async function BudgetAopPage() {
 
   const { data: membership } = (await supabase
     .from("org_members")
-    .select("org_id")
+    .select("org_id, role")
     .limit(1)
-    .single()) as { data: { org_id: string } | null };
+    .single()) as { data: { org_id: string; role: string } | null };
   if (!membership) return null;
   const orgId = membership.org_id;
+  const role = membership.role;
 
-  const [{ data: budgets }, { data: bus }, { data: accounts }, { data: members }] = await Promise.all([
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // A Business Head sees only their own vertical's AOP.
+  let scopeBuId: string | null = null;
+  if (role === "bh" && user) {
+    const { data: myBu } = await supabase
+      .from("business_units")
+      .select("id")
+      .eq("org_id", orgId)
+      .eq("manager_user_id", user.id)
+      .maybeSingle();
+    scopeBuId = (myBu as any)?.id ?? null;
+  }
+
+  const [{ data: budgets }, { data: busAll }, { data: accounts }, { data: members }] = await Promise.all([
     supabase
       .from("budgets")
       .select("id, name, fiscal_year, status, created_at")
@@ -57,16 +74,24 @@ export default async function BudgetAopPage() {
     fyActuals.set(acct.account_code, (fyActuals.get(acct.account_code) ?? 0) + net);
   });
 
+  const bus = scopeBuId
+    ? (busAll ?? []).filter((b: any) => b.id === scopeBuId)
+    : busAll ?? [];
+
   return (
     <>
       <PageHeader
         title="Budget / AOP"
-        subtitle="Bottom-up BH submission · Finance consolidation · CFO/CEO approval · Board ready"
+        subtitle={
+          scopeBuId
+            ? "Your vertical's AOP — build your bottom-up budget submission."
+            : "Bottom-up BH submission · Finance consolidation · CFO/CEO approval · Board ready"
+        }
       />
       <BudgetAopClient
         orgId={orgId}
         budgets={budgets ?? []}
-        bus={bus ?? []}
+        bus={bus}
         accounts={accounts ?? []}
         members={(members as any[]) ?? []}
         fyActuals={Object.fromEntries(fyActuals)}
