@@ -31,6 +31,23 @@ async function buildContext(): Promise<string> {
 
     const orgId = (membership as any).org_id as string;
     const orgName = ((membership as any).organizations as any)?.name ?? "Edme Insurance Brokers Limited";
+    const role = (membership as any).role as string;
+
+    // Business Heads only hear about their own vertical.
+    let scopeBuId: string | null = null;
+    let scopeBuName: string | null = null;
+    if (role === "bh") {
+      const { data: bu } = await supabase
+        .from("business_units")
+        .select("id, name")
+        .eq("org_id", orgId)
+        .eq("manager_user_id", user.id)
+        .maybeSingle();
+      if (bu) {
+        scopeBuId = (bu as any).id;
+        scopeBuName = (bu as any).name;
+      }
+    }
 
     const today = new Date().toISOString().slice(0, 10);
     const { data: periodNow } = await supabase
@@ -43,14 +60,25 @@ async function buildContext(): Promise<string> {
 
     let kpi: any = null;
     if (periodNow) {
-      const { data } = await supabase.rpc("fn_dashboard_kpis", {
-        p_org_id: orgId,
-        p_period_id: periodNow.id,
-      });
-      kpi = data?.[0] ?? null;
+      if (scopeBuId) {
+        const { data } = await supabase.rpc("fn_bu_kpis", {
+          p_org_id: orgId,
+          p_period_id: periodNow.id,
+          p_bu: scopeBuId,
+        });
+        kpi = data?.[0] ?? null;
+      } else {
+        const { data } = await supabase.rpc("fn_dashboard_kpis", {
+          p_org_id: orgId,
+          p_period_id: periodNow.id,
+        });
+        kpi = data?.[0] ?? null;
+      }
     }
 
-    const { data: monthly } = await supabase.rpc("fn_monthly_pl", { p_org_id: orgId });
+    const { data: monthly } = scopeBuId
+      ? await supabase.rpc("fn_bu_monthly", { p_org_id: orgId, p_bu: scopeBuId })
+      : await supabase.rpc("fn_monthly_pl", { p_org_id: orgId });
     const ytdRev = (monthly ?? []).reduce((s: number, r: any) => s + Number(r.revenue || 0), 0);
     const ytdExp = (monthly ?? []).reduce((s: number, r: any) => s + Number(r.expense || 0), 0);
     const ytdNet = ytdRev - ytdExp;
@@ -64,6 +92,9 @@ async function buildContext(): Promise<string> {
       .join(" | ");
 
     return [
+      scopeBuName
+        ? `ACCESS SCOPE: You are speaking to the Business Head of the "${scopeBuName}" vertical. EVERY figure below is for THEIR vertical only. Never reveal company-wide totals or other verticals' numbers; if asked about the whole company or another Business Head, say that's visible only to CFO / CEO / Admin.`
+        : `ACCESS SCOPE: company-wide (CFO / CEO / Admin view).`,
       `Organization: ${orgName} (insurance broker, Indian Rupee, fiscal year April–March).`,
       `User role: ${(membership as any).role}.`,
       `Current period: ${periodNow?.period_label ?? "—"}.`,

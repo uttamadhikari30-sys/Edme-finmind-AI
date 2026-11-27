@@ -38,8 +38,26 @@ const NAV: NavItem[] = [
   { id: "settings", label: "Settings", href: "/settings", icon: "⚙️", section: "ADMIN" },
 ];
 
+// Business Heads only see their own reporting/planning pages — nothing in
+// Ledger, Intelligence or Admin, and nothing after AOP Balance Sheet.
+const BH_ALLOWED = new Set([
+  "/dashboard",
+  "/pl",
+  "/mom",
+  "/cash-flow",
+  "/variance",
+  "/vertical",
+  "/vpb",
+  "/le-forecast",
+  "/budget-aop",
+  "/aop-pl",
+  "/aop-bs",
+]);
+
 export default function Sidebar({ userName, userRole }: { userName: string; userRole: string }) {
   const pathname = usePathname();
+  const isBH = (userRole || "").toLowerCase() === "bh";
+  const nav = isBH ? NAV.filter((n) => BH_ALLOWED.has(n.href)) : NAV;
   const now = new Date();
   const fyStart = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
   const fyLabel = `FY ${fyStart}-${String(fyStart + 1).slice(2)}`;
@@ -86,7 +104,7 @@ export default function Sidebar({ userName, userRole }: { userName: string; user
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-2">
-        {NAV.map((item) => {
+        {nav.map((item) => {
           const active = pathname === item.href || pathname.startsWith(item.href + "/");
           const showSection = item.section !== lastSection;
           if (showSection) lastSection = item.section;
