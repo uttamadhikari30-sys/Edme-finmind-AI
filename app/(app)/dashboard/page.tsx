@@ -11,6 +11,7 @@ import PLWaterfall from "@/components/dashboard/pl-waterfall";
 import HeroStrip from "@/components/dashboard/hero-strip";
 import KpiTicker, { type TickerItem } from "@/components/dashboard/kpi-ticker";
 import PerformerBoard, { type ScoreRow } from "@/components/dashboard/performer-board";
+import VerticalHeatmap from "@/components/dashboard/vertical-heatmap";
 import BhTargetPopup from "@/components/dashboard/bh-target-popup";
 import AIInsightsCard from "@/components/ai/ai-insights-card";
 import EmptyState from "@/components/ui/empty-state";
@@ -322,6 +323,8 @@ export default async function DashboardPage() {
       <KpiSecondary kpis={secondaryKpis} />
 
       {isCompanyView && top5.length > 0 && <PerformerBoard top={top5} bottom={bottom5} />}
+
+      {isCompanyView && scorecard.length > 0 && <VerticalHeatmap rows={scorecard} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-4">
         <div className="lg:col-span-3">
