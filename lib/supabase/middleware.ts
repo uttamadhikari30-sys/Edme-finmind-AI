@@ -72,7 +72,7 @@ export async function updateSession(request: NextRequest) {
     !path.startsWith("/force-password-change") &&
     !path.startsWith("/onboarding")
   ) {
-    const BH_ALLOWED = ["/dashboard", "/pl", "/mom", "/vertical", "/clients", "/budget-aop"];
+    const BH_ALLOWED = ["/dashboard", "/pl", "/mom", "/vertical", "/clients", "/budget-aop", "/aop-builder"];
     const allowed = BH_ALLOWED.some((p) => path === p || path.startsWith(p + "/"));
     if (!allowed) {
       const { data: m } = await supabase
