@@ -13,6 +13,7 @@ const NAV: NavItem[] = [
   { id: "mom", label: "Month-on-Month P&L", href: "/mom", icon: "📅", section: "REPORTS" },
   { id: "cash-flow", label: "Cash Flow", href: "/cash-flow", icon: "💵", section: "REPORTS" },
   { id: "clients", label: "Customer List", href: "/clients", icon: "🧾", section: "ANALYTICS" },
+  { id: "client-movement", label: "Client Movement", href: "/client-movement", icon: "🔄", section: "ANALYTICS" },
   { id: "variance", label: "Variance Analysis", href: "/variance", icon: "📈", section: "ANALYTICS" },
   { id: "vertical", label: "Vertical Performance", href: "/vertical", icon: "👥", section: "ANALYTICS" },
   { id: "vpb", label: "Variable Pay (VPB)", href: "/vpb", icon: "💜", section: "ANALYTICS" },
@@ -20,6 +21,7 @@ const NAV: NavItem[] = [
   { id: "budget-aop", label: "Budget / AOP", href: "/budget-aop", icon: "🎯", section: "PLANNING" },
   { id: "aop-builder", label: "AOP Builder", href: "/aop-builder", icon: "🏗️", section: "PLANNING" },
   { id: "aop-costs", label: "Direct Costs (Finance)", href: "/aop-costs", icon: "🏦", section: "PLANNING" },
+  { id: "aop-board", label: "AOP Board", href: "/aop-board", icon: "🧑‍⚖️", section: "PLANNING" },
   { id: "aop-pl", label: "AOP P&L", href: "/aop-pl", icon: "📋", section: "PLANNING" },
   { id: "aop-bs", label: "AOP Balance Sheet", href: "/aop-bs", icon: "🏛", section: "PLANNING" },
   { id: "aop-cfs", label: "AOP Cash Flow", href: "/aop-cfs", icon: "💵", section: "PLANNING" },
@@ -50,6 +52,7 @@ const BH_ALLOWED = new Set([
   "/mom",
   "/vertical",
   "/clients",
+  "/client-movement",
   "/budget-aop",
   "/aop-builder",
 ]);
