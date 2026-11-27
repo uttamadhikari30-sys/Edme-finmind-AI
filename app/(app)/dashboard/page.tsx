@@ -10,6 +10,8 @@ import KpiSecondary, { type SecondaryKpi } from "@/components/dashboard/kpi-seco
 import PLWaterfall from "@/components/dashboard/pl-waterfall";
 import HeroStrip from "@/components/dashboard/hero-strip";
 import KpiTicker, { type TickerItem } from "@/components/dashboard/kpi-ticker";
+import PerformerBoard, { type ScoreRow } from "@/components/dashboard/performer-board";
+import BhTargetPopup from "@/components/dashboard/bh-target-popup";
 import AIInsightsCard from "@/components/ai/ai-insights-card";
 import EmptyState from "@/components/ui/empty-state";
 import { formatPct } from "@/lib/utils";
@@ -97,6 +99,20 @@ export default async function DashboardPage() {
     expense: Number(r.expense),
     net_income: Number(r.net_income),
   }));
+
+  // Per-vertical scorecard (actual vs AOP) — powers admin Top/Bottom-5 + BH popup
+  let scorecard: ScoreRow[] = [];
+  if (periodToday) {
+    const { data } = await supabase.rpc("fn_vertical_scorecard", {
+      p_org_id: orgId,
+      p_period_id: periodToday.id,
+    });
+    scorecard = (data as ScoreRow[]) ?? [];
+  }
+  const isCompanyView = ["owner", "cfo", "ceo"].includes(role);
+  const top5 = scorecard.slice(0, 5);
+  const bottom5 = scorecard.slice(-5).reverse();
+  const bhRow = scopeBU ? scorecard.find((r) => r.bu_id === scopeBU!.id) ?? null : null;
 
   // Member count for Rev/HC
   const { count: hcCount } = await supabase
@@ -266,6 +282,10 @@ export default async function DashboardPage() {
 
   return (
     <>
+      {scopeBU && bhRow && (
+        <BhTargetPopup row={bhRow} name={scopeBU.name} period={periodToday?.period_label ?? "this period"} />
+      )}
+
       {scopeBU && (
         <div className="mb-4 rounded-xl border border-navy/15 bg-navy-50/50 px-4 py-2.5 flex items-center gap-2 text-[12.5px]">
           <span className="text-[15px]">🎯</span>
@@ -297,6 +317,8 @@ export default async function DashboardPage() {
 
       <DashboardKpisClient kpis={mainKpis} />
       <KpiSecondary kpis={secondaryKpis} />
+
+      {isCompanyView && top5.length > 0 && <PerformerBoard top={top5} bottom={bottom5} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-4">
         <div className="lg:col-span-3">
