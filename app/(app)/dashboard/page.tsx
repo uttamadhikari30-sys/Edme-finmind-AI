@@ -22,12 +22,13 @@ export default async function DashboardPage() {
 
   const { data: membership } = (await supabase
     .from("org_members")
-    .select("org_id, full_name, organizations(name)")
+    .select("org_id, role, full_name, organizations(name)")
     .limit(1)
     .single()) as { data: any };
 
   if (!membership) return null;
   const orgId = membership.org_id;
+  const role = membership.role as string;
   const org = membership.organizations as { name: string };
 
   const { data: verticalsList } = await supabase
@@ -56,17 +57,40 @@ export default async function DashboardPage() {
     .gte("end_date", today)
     .maybeSingle();
 
-  let kpis: any = null;
-  if (periodToday) {
-    const { data } = await supabase.rpc("fn_dashboard_kpis", {
-      p_org_id: orgId,
-      p_period_id: periodToday.id,
-    });
-    kpis = data?.[0] ?? null;
+  // Role-based scope: a Business Head sees only their own vertical.
+  let scopeBU: { id: string; name: string } | null = null;
+  if (role === "bh" && user) {
+    const { data: bu } = await supabase
+      .from("business_units")
+      .select("id, name")
+      .eq("org_id", orgId)
+      .eq("manager_user_id", user.id)
+      .maybeSingle();
+    if (bu) scopeBU = bu as { id: string; name: string };
   }
 
-  // Monthly trend
-  const { data: monthlyRaw } = await supabase.rpc("fn_monthly_pl", { p_org_id: orgId });
+  let kpis: any = null;
+  if (periodToday) {
+    if (scopeBU) {
+      const { data } = await supabase.rpc("fn_bu_kpis", {
+        p_org_id: orgId,
+        p_period_id: periodToday.id,
+        p_bu: scopeBU.id,
+      });
+      kpis = data?.[0] ?? null;
+    } else {
+      const { data } = await supabase.rpc("fn_dashboard_kpis", {
+        p_org_id: orgId,
+        p_period_id: periodToday.id,
+      });
+      kpis = data?.[0] ?? null;
+    }
+  }
+
+  // Monthly trend (scoped to the BH's vertical when applicable)
+  const { data: monthlyRaw } = scopeBU
+    ? await supabase.rpc("fn_bu_monthly", { p_org_id: orgId, p_bu: scopeBU.id })
+    : await supabase.rpc("fn_monthly_pl", { p_org_id: orgId });
   const monthly = (monthlyRaw ?? []).map((r: any) => ({
     period_label: r.period_label,
     revenue: Number(r.revenue),
@@ -81,7 +105,7 @@ export default async function DashboardPage() {
 
   // P&L breakdown for waterfall
   let plRows: any[] = [];
-  if (periodToday) {
+  if (periodToday && !scopeBU) {
     const { data } = await supabase.rpc("fn_pl_statement", {
       p_org_id: orgId,
       p_period_id: periodToday.id,
@@ -98,7 +122,7 @@ export default async function DashboardPage() {
   // Estimated PAT (assume 25% effective tax)
   const patEst = netIncome > 0 ? netIncome * 0.75 : netIncome;
 
-  const headcount = hcCount ?? 0;
+  const headcount = scopeBU ? 1 : hcCount ?? 0;
   const revPerHc = headcount > 0 ? revenue / headcount : 0;
 
   // Year-over-year — placeholder until we have prior-year ledger
@@ -202,12 +226,12 @@ export default async function DashboardPage() {
   }
 
   // Waterfall rows from P&L
-  const totalRevenue = plRows
-    .filter((r: any) => r.section === "revenue")
-    .reduce((s: number, r: any) => s + Number(r.amount), 0);
-  const totalExpense = plRows
-    .filter((r: any) => r.section === "expense")
-    .reduce((s: number, r: any) => s + Number(r.amount), 0);
+  const totalRevenue = scopeBU
+    ? revenue
+    : plRows.filter((r: any) => r.section === "revenue").reduce((s: number, r: any) => s + Number(r.amount), 0);
+  const totalExpense = scopeBU
+    ? expense
+    : plRows.filter((r: any) => r.section === "expense").reduce((s: number, r: any) => s + Number(r.amount), 0);
   const grossProfit = totalRevenue - totalExpense;
 
   const waterfallRows = [
@@ -242,6 +266,16 @@ export default async function DashboardPage() {
 
   return (
     <>
+      {scopeBU && (
+        <div className="mb-4 rounded-xl border border-navy/15 bg-navy-50/50 px-4 py-2.5 flex items-center gap-2 text-[12.5px]">
+          <span className="text-[15px]">🎯</span>
+          <span className="text-ink-muted">
+            You&apos;re viewing <b className="text-navy">{scopeBU.name}</b> — your vertical only. Company-wide
+            figures are visible to CFO / CEO / Admin.
+          </span>
+        </div>
+      )}
+
       <HeroStrip
         orgName={org.name}
         periodLabel={periodToday?.period_label ?? "—"}
