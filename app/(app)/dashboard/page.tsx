@@ -9,6 +9,7 @@ import DashboardKpisClient, { type DashKpi } from "@/components/dashboard/dashbo
 import KpiSecondary, { type SecondaryKpi } from "@/components/dashboard/kpi-secondary";
 import PLWaterfall from "@/components/dashboard/pl-waterfall";
 import HeroStrip from "@/components/dashboard/hero-strip";
+import KpiTicker, { type TickerItem } from "@/components/dashboard/kpi-ticker";
 import AIInsightsCard from "@/components/ai/ai-insights-card";
 import EmptyState from "@/components/ui/empty-state";
 import { formatPct } from "@/lib/utils";
@@ -102,6 +103,26 @@ export default async function DashboardPage() {
 
   // Year-over-year — placeholder until we have prior-year ledger
   const yoy = 0;
+
+  // ---- Live KPI ticker (floating numbers) --------------------------------
+  const ytdRev = monthly.reduce((s: number, m: any) => s + m.revenue, 0);
+  const ytdNet = monthly.reduce((s: number, m: any) => s + m.net_income, 0);
+  const L = (v: number) => `₹${(v / 1e5).toFixed(2)} L`;
+  const tickerItems: TickerItem[] =
+    revenue > 0
+      ? [
+          { label: "Revenue", value: L(revenue) },
+          { label: "EBITDA", value: L(netIncome), delta: `${margin.toFixed(1)}%`, up: margin >= 20 },
+          { label: "Margin", value: `${margin.toFixed(1)}%`, delta: "mgn", up: margin >= 20 },
+          { label: "PAT (Est.)", value: L(patEst) },
+          { label: "Expense Ratio", value: `${expenseRatio.toFixed(1)}%`, delta: "vs 65%", up: expenseRatio <= 65 },
+          { label: "Rev / HC", value: L(revPerHc) },
+          { label: "YTD Revenue", value: L(ytdRev) },
+          { label: "YTD EBITDA", value: L(ytdNet) },
+          { label: "Posted JEs", value: `${kpis?.je_count_posted ?? 0}` },
+          { label: "Headcount", value: `${headcount}` },
+        ]
+      : [];
 
   // ---- Build KPI grids ----------------------------------------------------
   const mainKpis: DashKpi[] = [
@@ -223,6 +244,8 @@ export default async function DashboardPage() {
         marginPct={margin}
         jeCount={kpis?.je_count_posted ?? 0}
       />
+
+      {tickerItems.length > 0 && <KpiTicker items={tickerItems} />}
 
       <DashboardControls
         periodLabel={periodToday?.period_label ?? "—"}

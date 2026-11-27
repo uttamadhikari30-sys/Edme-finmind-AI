@@ -184,3 +184,31 @@ html, body {
   mask-composite: exclude;
   pointer-events: none;
 }
+
+/* ── Live KPI ticker (floating numbers) ───────────────────────────── */
+.kpi-ticker {
+  display: flex; align-items: center; height: 44px; border-radius: 12px; overflow: hidden;
+  background: linear-gradient(135deg, #040c22 0%, #0d1d52 50%, var(--navy) 100%);
+  border: 1px solid rgba(255,255,255,0.07);
+  box-shadow: 0 8px 32px rgba(13,29,82,0.22);
+}
+.kpi-ticker-badge {
+  flex-shrink: 0; display: flex; align-items: center; gap: 6px; height: 100%; padding: 0 16px;
+  font-size: 9px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase;
+  color: rgba(255,255,255,0.55); border-right: 1px solid rgba(255,255,255,0.08); white-space: nowrap;
+}
+.kpi-ticker-scroll {
+  flex: 1; overflow: hidden; height: 100%; display: flex; align-items: center;
+  -webkit-mask: linear-gradient(90deg, transparent, #000 3%, #000 97%, transparent);
+  mask: linear-gradient(90deg, transparent, #000 3%, #000 97%, transparent);
+}
+.kpi-ticker-inner { display: flex; align-items: center; white-space: nowrap; animation: kpiTick 42s linear infinite; }
+.kpi-ticker-inner:hover { animation-play-state: paused; }
+@keyframes kpiTick { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.kti { display: inline-flex; align-items: center; gap: 7px; padding: 0 18px; }
+.kti-lbl { font-size: 9.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,0.45); }
+.kti-val { font-family: var(--font-jetbrains), ui-monospace, monospace; font-size: 13.5px; font-weight: 700; color: #fff; }
+.kti-delta { font-size: 10.5px; font-weight: 700; font-family: var(--font-jetbrains), ui-monospace, monospace; }
+.kti-delta.up { color: #6ee7c0; }
+.kti-delta.dn { color: #fca5a5; }
+.kti-sep { color: rgba(255,255,255,0.14); font-weight: 400; }
