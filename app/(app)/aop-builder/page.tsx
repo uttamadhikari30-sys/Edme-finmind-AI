@@ -2,6 +2,9 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
 import PageHeader from "@/components/ui/page-header";
 import AopBuilderClient, { type PlanLine } from "@/components/aop/aop-builder-client";
+import CostPlannerClient, { type CostLine } from "@/components/aop/cost-planner-client";
+
+const CONV_THRESHOLD = 60;
 
 export const dynamic = "force-dynamic";
 
@@ -84,6 +87,28 @@ export default async function AopBuilderPage() {
     };
   });
 
+  // Committed brokerage from the saved plan (renewal always counts; new counts only ≥ 60%).
+  const committedBrokerage = lines.reduce((sum, l) => {
+    const counts = l.basis === "renewal" || l.conversion_pct >= CONV_THRESHOLD;
+    return counts ? sum + (l.planned_premium * l.brokerage_pct) / 100 : sum;
+  }, 0);
+
+  const { data: costs } = await supabase
+    .from("aop_cost_lines")
+    .select("category, label, headcount, ctc_annual, amount")
+    .eq("org_id", orgId)
+    .eq("business_unit_id", bu.id)
+    .eq("fiscal_year", PLAN_FY)
+    .in("category", ["hiring", "mid_office", "back_office"]);
+
+  const costLines: CostLine[] = (costs ?? []).map((c: any) => ({
+    category: c.category,
+    label: c.label ?? "",
+    headcount: Number(c.headcount) || 0,
+    ctc_annual: Number(c.ctc_annual) || 0,
+    amount: Number(c.amount) || 0,
+  }));
+
   return (
     <>
       <PageHeader
@@ -91,6 +116,19 @@ export default async function AopBuilderPage() {
         subtitle={`${bu.name} · Next year (${PLAN_FY}) · carried forward from ${BASIS_FY} actuals`}
       />
       <AopBuilderClient fiscalYear={PLAN_FY} basisYear={BASIS_FY} verticalName={bu.name} initialLines={lines} />
+
+      <div className="mt-8">
+        <div className="text-[15px] font-bold text-navy mb-1">Cost Plan &amp; AOP P&amp;L</div>
+        <p className="text-[11.5px] text-ink-muted mb-3">
+          Add your vertical's people costs. Save the client plan above first — AOP Profit uses the last saved committed brokerage.
+        </p>
+        <CostPlannerClient
+          fiscalYear={PLAN_FY}
+          verticalName={bu.name}
+          committedBrokerage={committedBrokerage}
+          initialLines={costLines}
+        />
+      </div>
     </>
   );
 }
