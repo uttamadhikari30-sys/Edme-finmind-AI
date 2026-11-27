@@ -25,14 +25,17 @@ export default function Header({
     router.refresh();
   }
 
-  const today = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+  const now = new Date();
+  const today = now.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+  const fyStart = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  const fyLabel = `FY ${fyStart}-${String(fyStart + 1).slice(2)}`;
 
   return (
     <header className="fixed left-[256px] right-0 top-0 h-[66px] bg-white/95 backdrop-blur-md border-b border-[var(--border)] z-[90] flex items-center px-5 gap-3 shadow-[0_1px_10px_rgba(28,54,135,0.05)]">
       <div className="min-w-[160px] max-w-[280px] flex-shrink-0">
         <div className="font-serif text-[19px] font-bold text-navy leading-tight truncate">{title}</div>
         <div className="text-[10px] text-ink-subtle truncate">
-          {subtitle || `FY 2025-26 · ${today} · ${orgName}`}
+          {subtitle || `${fyLabel} · ${today} · ${orgName}`}
         </div>
       </div>
 

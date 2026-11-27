@@ -40,6 +40,9 @@ const NAV: NavItem[] = [
 
 export default function Sidebar({ userName, userRole }: { userName: string; userRole: string }) {
   const pathname = usePathname();
+  const now = new Date();
+  const fyStart = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  const fyLabel = `FY ${fyStart}-${String(fyStart + 1).slice(2)}`;
   const initials = (userName || "U")
     .split(" ")
     .map((p) => p[0])
@@ -90,7 +93,7 @@ export default function Sidebar({ userName, userRole }: { userName: string; user
           return (
             <div key={item.id}>
               {showSection && (
-                <div className="px-4 pt-3 pb-1 text-[9px] tracking-[2px] uppercase text-white/25 font-bold">
+                <div className="px-4 pt-3.5 pb-1.5 text-[10px] tracking-[2.5px] uppercase text-white font-extrabold">
                   {item.section}
                 </div>
               )}
@@ -113,7 +116,7 @@ export default function Sidebar({ userName, userRole }: { userName: string; user
       <div className="p-3 border-t border-white/[0.06]">
         <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg border border-edgreen/30 bg-edgreen/10">
           <span className="w-1.5 h-1.5 rounded-full bg-edgreen animate-blink" />
-          <span className="text-[10.5px] text-white/50">Books: Open · FY 2025-26</span>
+          <span className="text-[10.5px] text-white/50">Books: Open · {fyLabel}</span>
         </div>
       </div>
     </aside>
