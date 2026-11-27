@@ -68,24 +68,69 @@ export default async function AopBuilderPage() {
     .eq("business_unit_id", bu.id)
     .eq("fiscal_year", PLAN_FY);
 
+  // Master data: all product lines (for the add-client dropdown) and this
+  // vertical's client names (to label saved lines that have no prior policy).
+  const { data: productList } = await supabase
+    .from("product_lines")
+    .select("id, code, name, default_brokerage_pct")
+    .eq("org_id", orgId)
+    .order("code");
+  const products = (productList ?? []).map((p: any) => ({
+    id: p.id,
+    code: p.code,
+    name: p.name,
+    brokerage_pct: Number(p.default_brokerage_pct) || 0,
+  }));
+  const productCode = new Map<string, string>();
+  products.forEach((p) => productCode.set(p.id, p.code));
+
+  const { data: clientRows } = await supabase
+    .from("clients")
+    .select("id, name")
+    .eq("org_id", orgId)
+    .eq("business_unit_id", bu.id);
+  const clientName = new Map<string, string>();
+  (clientRows ?? []).forEach((c: any) => clientName.set(c.id, c.name));
+
   const savedMap = new Map<string, any>();
   (saved ?? []).forEach((s: any) => savedMap.set(`${s.client_id}|${s.product_line_id}`, s));
 
-  const lines: PlanLine[] = (pols ?? []).map((p: any) => {
-    const s = savedMap.get(`${p.client_id}|${p.product_line_id}`);
-    return {
+  // Build lines from the UNION of last-year policies and saved plan lines, so
+  // clients added straight into AOP Builder (no prior policy) still appear.
+  const lineMap = new Map<string, PlanLine>();
+  (pols ?? []).forEach((p: any) => {
+    const key = `${p.client_id}|${p.product_line_id}`;
+    const s = savedMap.get(key);
+    lineMap.set(key, {
       client_id: p.client_id,
       product_line_id: p.product_line_id,
-      client: p.clients?.name ?? "—",
-      product: p.product_lines?.code ?? "—",
+      client: p.clients?.name ?? clientName.get(p.client_id) ?? "—",
+      product: p.product_lines?.code ?? productCode.get(p.product_line_id) ?? "—",
       basis: p.basis === "new" ? "new" : "renewal",
       last_year_premium: Number(p.premium),
       planned_premium: s ? Number(s.planned_premium) : Math.round((Number(p.premium) * 1.1) / 10000) * 10000,
       brokerage_pct: s ? Number(s.brokerage_pct) : Number(p.brokerage_pct),
       conversion_pct: s ? Number(s.conversion_pct) : p.basis === "new" ? 70 : 100,
       included: true,
-    };
+    });
   });
+  (saved ?? []).forEach((s: any) => {
+    const key = `${s.client_id}|${s.product_line_id}`;
+    if (lineMap.has(key)) return; // already carried from a policy
+    lineMap.set(key, {
+      client_id: s.client_id,
+      product_line_id: s.product_line_id,
+      client: clientName.get(s.client_id) ?? "—",
+      product: productCode.get(s.product_line_id) ?? "—",
+      basis: s.basis === "new" ? "new" : "renewal",
+      last_year_premium: 0,
+      planned_premium: Number(s.planned_premium),
+      brokerage_pct: Number(s.brokerage_pct),
+      conversion_pct: Number(s.conversion_pct),
+      included: true,
+    });
+  });
+  const lines: PlanLine[] = [...lineMap.values()];
 
   // Committed brokerage from the saved plan (renewal always counts; new counts only ≥ 60%).
   const committedBrokerage = lines.reduce((sum, l) => {
@@ -128,7 +173,13 @@ export default async function AopBuilderPage() {
         title="AOP Builder"
         subtitle={`${bu.name} · Next year (${PLAN_FY}) · carried forward from ${BASIS_FY} actuals`}
       />
-      <AopBuilderClient fiscalYear={PLAN_FY} basisYear={BASIS_FY} verticalName={bu.name} initialLines={lines} />
+      <AopBuilderClient
+        fiscalYear={PLAN_FY}
+        basisYear={BASIS_FY}
+        verticalName={bu.name}
+        initialLines={lines}
+        products={products}
+      />
 
       <div className="mt-8">
         <div className="text-[15px] font-bold text-navy mb-1">Cost Plan &amp; AOP P&amp;L</div>
