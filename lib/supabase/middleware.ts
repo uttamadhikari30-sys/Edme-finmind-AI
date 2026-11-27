@@ -62,5 +62,32 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Business Heads may only reach pages fully scoped to their vertical.
+  // Only query the role when they hit a page outside the allowed set.
+  if (
+    user &&
+    !isAuthPage &&
+    !isPublic &&
+    !path.startsWith("/api/") &&
+    !path.startsWith("/force-password-change") &&
+    !path.startsWith("/onboarding")
+  ) {
+    const BH_ALLOWED = ["/dashboard", "/pl", "/mom", "/vertical", "/budget-aop"];
+    const allowed = BH_ALLOWED.some((p) => path === p || path.startsWith(p + "/"));
+    if (!allowed) {
+      const { data: m } = await supabase
+        .from("org_members")
+        .select("role")
+        .eq("user_id", user.id)
+        .limit(1)
+        .maybeSingle();
+      if ((m as any)?.role === "bh") {
+        const url = request.nextUrl.clone();
+        url.pathname = "/dashboard";
+        return NextResponse.redirect(url);
+      }
+    }
+  }
+
   return response;
 }
