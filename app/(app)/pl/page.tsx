@@ -12,11 +12,26 @@ export default async function PLPage() {
 
   const { data: membership } = (await supabase
     .from("org_members")
-    .select("org_id")
+    .select("org_id, role")
     .limit(1)
-    .single()) as { data: { org_id: string } | null };
+    .single()) as { data: { org_id: string; role: string } | null };
   if (!membership) return null;
   const orgId = membership.org_id;
+  const role = membership.role;
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  let scopeBuId: string | null = null;
+  if (role === "bh" && user) {
+    const { data: myBu } = await supabase
+      .from("business_units")
+      .select("id")
+      .eq("org_id", orgId)
+      .eq("manager_user_id", user.id)
+      .maybeSingle();
+    scopeBuId = (myBu as any)?.id ?? null;
+  }
 
   // All periods + accounts
   const [{ data: periods }, { data: accounts }, { data: bus }] = await Promise.all([
@@ -52,6 +67,7 @@ export default async function PLPage() {
   type AmountByPeriod = Record<string, Record<string, number>>;
   const byAccount: AmountByPeriod = {};
   (lines ?? []).forEach((row: any) => {
+    if (scopeBuId && row.business_unit_id !== scopeBuId) return;
     const acct = row.chart_of_accounts;
     const periodId = row.journal_entries.period_id;
     const dr = Number(row.debit_amount);
@@ -71,10 +87,12 @@ export default async function PLPage() {
 
   let budgetByAccount: AmountByPeriod = {};
   if (budgets?.[0]) {
-    const { data: budgetLines } = await supabase
+    let blQuery = supabase
       .from("budget_lines")
-      .select("account_id, period_id, amount")
+      .select("account_id, period_id, amount, business_unit_id")
       .eq("budget_id", budgets[0].id);
+    if (scopeBuId) blQuery = blQuery.eq("business_unit_id", scopeBuId);
+    const { data: budgetLines } = await blQuery;
     (budgetLines ?? []).forEach((bl: any) => {
       budgetByAccount[bl.account_id] = budgetByAccount[bl.account_id] ?? {};
       budgetByAccount[bl.account_id][bl.period_id] =
@@ -86,12 +104,16 @@ export default async function PLPage() {
     <>
       <PageHeader
         title="Profit & Loss Statement"
-        subtitle="Detailed P&L with Actual vs AOP, Prior Year, LE & Variance"
+        subtitle={
+          scopeBuId
+            ? "Your vertical's P&L — Actual vs AOP, Prior Year, LE & Variance"
+            : "Detailed P&L with Actual vs AOP, Prior Year, LE & Variance"
+        }
       />
       <PLStatementClient
         periods={periods ?? []}
         accounts={accounts ?? []}
-        bus={bus ?? []}
+        bus={scopeBuId ? (bus ?? []).filter((b: any) => b.id === scopeBuId) : bus ?? []}
         actualByAccount={byAccount}
         budgetByAccount={budgetByAccount}
       />
