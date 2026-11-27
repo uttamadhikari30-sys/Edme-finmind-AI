@@ -185,9 +185,16 @@ export default async function DashboardPage() {
   // Live alerts — computed from real numbers
   const alerts: { dot: "amber" | "green" | "red" | "navy"; text: string }[] = [];
   if (revenue > 0) {
-    if (margin > 0) alerts.push({ dot: "green", text: `EBITDA margin ${margin.toFixed(1)}%` });
-    if (expenseRatio > 80)
-      alerts.push({ dot: "red", text: `Expense ratio at ${expenseRatio.toFixed(1)}% — review needed` });
+    alerts.push({ dot: margin >= 25 ? "green" : "amber", text: `EBITDA margin ${margin.toFixed(1)}%` });
+    alerts.push({
+      dot: expenseRatio <= 65 ? "green" : expenseRatio <= 80 ? "amber" : "red",
+      text: `Expense ratio ${expenseRatio.toFixed(1)}% (target < 65%)`,
+    });
+    alerts.push({ dot: "navy", text: `Revenue ${L(revenue)} this period` });
+    alerts.push({ dot: "navy", text: `YTD Revenue ${L(ytdRev)} · EBITDA ${L(ytdNet)}` });
+    alerts.push({ dot: "green", text: `PAT (est.) ${L(patEst)}` });
+    alerts.push({ dot: "navy", text: `${kpis?.je_count_posted ?? 0} entries posted this period` });
+    alerts.push({ dot: "navy", text: `${headcount} business heads · Rev/HC ${L(revPerHc)}` });
     if (kpis?.je_count_draft > 0)
       alerts.push({ dot: "amber", text: `${kpis.je_count_draft} draft entries pending` });
   } else {

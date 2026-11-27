@@ -212,3 +212,15 @@ html, body {
 .kti-delta.up { color: #6ee7c0; }
 .kti-delta.dn { color: #fca5a5; }
 .kti-sep { color: rgba(255,255,255,0.14); font-weight: 400; }
+
+/* Alert ribbon marquee (second, lighter scroller) */
+.alert-marquee {
+  flex: 1; overflow: hidden;
+  -webkit-mask: linear-gradient(90deg, transparent, #000 3%, #000 97%, transparent);
+  mask: linear-gradient(90deg, transparent, #000 3%, #000 97%, transparent);
+}
+.alert-marquee-inner {
+  display: inline-flex; align-items: center; white-space: nowrap;
+  animation: kpiTick 36s linear infinite;
+}
+.alert-marquee-inner:hover { animation-play-state: paused; }
