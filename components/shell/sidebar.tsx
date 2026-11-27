@@ -19,6 +19,7 @@ const NAV: NavItem[] = [
   { id: "le-forecast", label: "LE & Forecast", href: "/le-forecast", icon: "🔮", section: "PLANNING" },
   { id: "budget-aop", label: "Budget / AOP", href: "/budget-aop", icon: "🎯", section: "PLANNING" },
   { id: "aop-builder", label: "AOP Builder", href: "/aop-builder", icon: "🏗️", section: "PLANNING" },
+  { id: "aop-costs", label: "Direct Costs (Finance)", href: "/aop-costs", icon: "🏦", section: "PLANNING" },
   { id: "aop-pl", label: "AOP P&L", href: "/aop-pl", icon: "📋", section: "PLANNING" },
   { id: "aop-bs", label: "AOP Balance Sheet", href: "/aop-bs", icon: "🏛", section: "PLANNING" },
   { id: "aop-cfs", label: "AOP Cash Flow", href: "/aop-cfs", icon: "💵", section: "PLANNING" },
