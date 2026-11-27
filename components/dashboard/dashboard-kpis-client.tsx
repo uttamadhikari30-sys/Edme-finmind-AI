@@ -74,7 +74,17 @@ export default function DashboardKpisClient({ kpis }: { kpis: DashKpi[] }) {
             )}
 
             <div className="relative p-5">
-              <div className="text-[10.5px] font-bold uppercase tracking-[1.2px] text-ink-subtle mb-3">
+              {k.emoji && (
+                <div
+                  className={cn(
+                    "w-9 h-9 rounded-xl flex items-center justify-center text-[18px] mb-3 shadow-sm",
+                    "bg-white/70 border border-[var(--border)]"
+                  )}
+                >
+                  {k.emoji}
+                </div>
+              )}
+              <div className="text-[10.5px] font-bold uppercase tracking-[1.2px] text-ink-subtle mb-2">
                 {k.label}
               </div>
 
