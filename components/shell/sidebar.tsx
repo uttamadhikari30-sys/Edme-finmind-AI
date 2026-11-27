@@ -38,20 +38,15 @@ const NAV: NavItem[] = [
   { id: "settings", label: "Settings", href: "/settings", icon: "⚙️", section: "ADMIN" },
 ];
 
-// Business Heads only see their own reporting/planning pages — nothing in
-// Ledger, Intelligence or Admin, and nothing after AOP Balance Sheet.
+// Business Heads only see pages fully scoped to THEIR vertical — no company
+// or other-vertical numbers anywhere. Pages are re-enabled here as each is
+// scoped; everything in Ledger, Intelligence and Admin stays hidden.
 const BH_ALLOWED = new Set([
   "/dashboard",
   "/pl",
   "/mom",
-  "/cash-flow",
-  "/variance",
   "/vertical",
-  "/vpb",
-  "/le-forecast",
   "/budget-aop",
-  "/aop-pl",
-  "/aop-bs",
 ]);
 
 export default function Sidebar({ userName, userRole }: { userName: string; userRole: string }) {

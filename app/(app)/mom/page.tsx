@@ -11,11 +11,26 @@ export default async function MoMPLPage() {
 
   const { data: membership } = (await supabase
     .from("org_members")
-    .select("org_id")
+    .select("org_id, role")
     .limit(1)
-    .single()) as { data: { org_id: string } | null };
+    .single()) as { data: { org_id: string; role: string } | null };
   if (!membership) return null;
   const orgId = membership.org_id;
+  const role = membership.role;
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  let scopeBuId: string | null = null;
+  if (role === "bh" && user) {
+    const { data: myBu } = await supabase
+      .from("business_units")
+      .select("id")
+      .eq("org_id", orgId)
+      .eq("manager_user_id", user.id)
+      .maybeSingle();
+    scopeBuId = (myBu as any)?.id ?? null;
+  }
 
   const { data: periods } = await supabase
     .from("fiscal_periods")
@@ -23,13 +38,15 @@ export default async function MoMPLPage() {
     .eq("org_id", orgId)
     .order("start_date");
 
-  const { data: monthly } = await supabase.rpc("fn_monthly_pl", { p_org_id: orgId });
+  const { data: monthly } = scopeBuId
+    ? await supabase.rpc("fn_bu_monthly", { p_org_id: orgId, p_bu: scopeBuId })
+    : await supabase.rpc("fn_monthly_pl", { p_org_id: orgId });
 
   // Posted JE lines for detailed table
   const { data: lineRows } = await supabase
     .from("journal_entry_lines")
     .select(`
-      debit_amount, credit_amount,
+      debit_amount, credit_amount, business_unit_id,
       chart_of_accounts!inner(account_code, account_name, account_type),
       journal_entries!inner(period_id, status, org_id)
     `)
@@ -40,6 +57,7 @@ export default async function MoMPLPage() {
   const revenueByAccount: Bucket = {};
   const expenseByAccount: Bucket = {};
   (lineRows ?? []).forEach((row: any) => {
+    if (scopeBuId && row.business_unit_id !== scopeBuId) return;
     const acct = row.chart_of_accounts;
     const periodId = row.journal_entries.period_id;
     const dr = Number(row.debit_amount);
@@ -66,10 +84,12 @@ export default async function MoMPLPage() {
   const aopByAccount: Bucket = {};
   let monthlyBudget: Record<string, number> = {};
   if (budgets?.[0]) {
-    const { data: bl } = await supabase
+    let blQuery = supabase
       .from("budget_lines")
-      .select(`amount, period_id, chart_of_accounts!inner(account_code, account_type)`)
+      .select(`amount, period_id, business_unit_id, chart_of_accounts!inner(account_code, account_type)`)
       .eq("budget_id", budgets[0].id);
+    if (scopeBuId) blQuery = blQuery.eq("business_unit_id", scopeBuId);
+    const { data: bl } = await blQuery;
     (bl ?? []).forEach((row: any) => {
       const code = row.chart_of_accounts.account_code;
       aopByAccount[code] = aopByAccount[code] ?? {};
@@ -90,13 +110,17 @@ export default async function MoMPLPage() {
     <>
       <PageHeader
         title="Month-on-Month P&L"
-        subtitle="Track all 12 months · Revenue & Expense Trends · FY 2025-26"
+        subtitle={
+          scopeBuId
+            ? "Your vertical · Monthly Revenue & Expense Trends"
+            : "Track all 12 months · Revenue & Expense Trends"
+        }
       />
       <MoMTrackerClient
         periods={periods ?? []}
         monthly={(monthly as any[]) ?? []}
         monthlyBudget={monthlyBudget}
-        bus={bus ?? []}
+        bus={scopeBuId ? (bus ?? []).filter((b: any) => b.id === scopeBuId) : bus ?? []}
         revenueByAccount={revenueByAccount}
         expenseByAccount={expenseByAccount}
         aopByAccount={aopByAccount}
