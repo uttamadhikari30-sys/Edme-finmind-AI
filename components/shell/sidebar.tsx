@@ -55,6 +55,7 @@ const BH_ALLOWED = new Set([
   "/client-movement",
   "/budget-aop",
   "/aop-builder",
+  "/le-forecast",
 ]);
 
 export default function Sidebar({ userName, userRole }: { userName: string; userRole: string }) {
