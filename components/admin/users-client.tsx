@@ -30,6 +30,8 @@ type Member = {
   full_name: string | null;
   role: string;
   last_sign_in_at: string | null;
+  department?: string | null;
+  designation?: string | null;
 };
 
 type Invite = {
@@ -85,6 +87,68 @@ export default function UsersClient({
     email_sent: boolean;
     email_error: string | null;
   } | null>(null);
+
+  // ── Edit member panel ──────────────────────────────────────────────
+  const [editing, setEditing] = useState<Member | null>(null);
+  const [editForm, setEditForm] = useState({ full_name: "", department: "", designation: "", role: "viewer" });
+  const [resetPwd, setResetPwd] = useState("");
+  const [resetResult, setResetResult] = useState<string | null>(null);
+
+  function openEdit(m: Member) {
+    setEditing(m);
+    setEditForm({
+      full_name: m.full_name ?? "",
+      department: m.department ?? "",
+      designation: m.designation ?? "",
+      role: m.role,
+    });
+    setResetPwd("");
+    setResetResult(null);
+    setErr(null);
+  }
+
+  async function saveMember(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editing) return;
+    setBusy(true);
+    setErr(null);
+    const { error } = await supabase
+      .from("org_members")
+      .update({
+        full_name: editForm.full_name.trim() || null,
+        department: editForm.department.trim() || null,
+        designation: editForm.designation.trim() || null,
+        role: editForm.role,
+      })
+      .eq("org_id", editing.org_id)
+      .eq("user_id", editing.user_id);
+    setBusy(false);
+    if (error) {
+      setErr(error.message);
+      return;
+    }
+    setEditing(null);
+    router.refresh();
+  }
+
+  async function doResetPassword() {
+    if (!editing) return;
+    setBusy(true);
+    setErr(null);
+    setResetResult(null);
+    const res = await fetch("/api/admin/reset-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: editing.user_id, new_password: resetPwd }),
+    });
+    const data = await res.json();
+    setBusy(false);
+    if (!res.ok) {
+      setErr(data?.error ?? "Password reset failed");
+      return;
+    }
+    setResetResult(data.password);
+  }
 
   async function createUserDirect(e: React.FormEvent) {
     e.preventDefault();
@@ -571,6 +635,7 @@ export default function UsersClient({
               <tr>
                 <th>Email</th>
                 <th>Name</th>
+                <th>Dept / Designation</th>
                 <th>Role</th>
                 <th>Last sign-in</th>
                 {isAdmin && <th></th>}
@@ -581,6 +646,17 @@ export default function UsersClient({
                 <tr key={m.user_id}>
                   <td className="font-semibold">{m.email}</td>
                   <td className="text-ink-muted">{m.full_name ?? "—"}</td>
+                  <td className="text-[11.5px]">
+                    {m.department || m.designation ? (
+                      <span>
+                        {m.designation && <span className="font-semibold text-ink">{m.designation}</span>}
+                        {m.designation && m.department && <span className="text-ink-subtle"> · </span>}
+                        {m.department && <span className="text-ink-muted">{m.department}</span>}
+                      </span>
+                    ) : (
+                      <span className="text-ink-subtle">—</span>
+                    )}
+                  </td>
                   <td>
                     {isAdmin ? (
                       <select
@@ -601,9 +677,20 @@ export default function UsersClient({
                   </td>
                   {isAdmin && (
                     <td>
-                      <button onClick={() => removeMember(m)} className="text-[11px] text-edred font-semibold hover:underline">
-                        Remove
-                      </button>
+                      <div className="flex items-center gap-3 justify-end">
+                        <button
+                          onClick={() => openEdit(m)}
+                          className="text-[11px] text-navy font-semibold hover:underline"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => removeMember(m)}
+                          className="text-[11px] text-edred font-semibold hover:underline"
+                        >
+                          Remove
+                        </button>
+                      </div>
                     </td>
                   )}
                 </tr>
@@ -612,6 +699,112 @@ export default function UsersClient({
           </table>
         </CardBody>
       </Card>
+
+      {/* ── Edit member modal ──────────────────────────────────────── */}
+      {editing && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+          onClick={() => setEditing(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md bg-white rounded-2xl shadow-deep border border-[var(--border)] max-h-[90vh] overflow-y-auto animate-fade-up"
+          >
+            <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between bg-gradient-to-br from-navy to-navy-800 text-white rounded-t-2xl">
+              <div>
+                <div className="font-serif text-[17px] font-bold leading-none">Edit member</div>
+                <div className="text-[11px] text-white/70 mt-1">{editing.email}</div>
+              </div>
+              <button onClick={() => setEditing(null)} className="text-white/70 hover:text-white text-[18px] px-1">
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={saveMember} className="p-5 space-y-3">
+              <Field label="Full name">
+                <input
+                  className={inpCls}
+                  value={editForm.full_name}
+                  onChange={(e) => setEditForm((f) => ({ ...f, full_name: e.target.value }))}
+                  placeholder="e.g. Asheesh Handa"
+                />
+              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Department">
+                  <input
+                    className={inpCls}
+                    value={editForm.department}
+                    onChange={(e) => setEditForm((f) => ({ ...f, department: e.target.value }))}
+                    placeholder="e.g. Corporate"
+                  />
+                </Field>
+                <Field label="Designation">
+                  <input
+                    className={inpCls}
+                    value={editForm.designation}
+                    onChange={(e) => setEditForm((f) => ({ ...f, designation: e.target.value }))}
+                    placeholder="e.g. Business Head"
+                  />
+                </Field>
+              </div>
+              <Field label="Role">
+                <select
+                  className={inpCls}
+                  value={editForm.role}
+                  onChange={(e) => setEditForm((f) => ({ ...f, role: e.target.value }))}
+                >
+                  {ROLES.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.label} — {r.desc}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+
+              <button
+                type="submit"
+                disabled={busy}
+                className="w-full rounded-lg bg-navy text-white font-semibold text-[13px] py-2.5 hover:bg-navy-800 disabled:opacity-60"
+              >
+                {busy ? "Saving…" : "Save changes"}
+              </button>
+            </form>
+
+            {/* Reset password */}
+            <div className="px-5 pb-5">
+              <div className="rounded-xl border border-edred/20 bg-edred-50/50 p-4">
+                <div className="text-[10.5px] uppercase tracking-[1.5px] font-bold text-edred mb-2">
+                  Reset password
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    className={inpCls}
+                    value={resetPwd}
+                    onChange={(e) => setResetPwd(e.target.value)}
+                    placeholder="New password (min 8)"
+                  />
+                  <button
+                    type="button"
+                    onClick={doResetPassword}
+                    disabled={busy || resetPwd.trim().length < 8}
+                    className="flex-shrink-0 px-3 py-2 rounded-lg bg-edred text-white text-[12px] font-semibold hover:bg-edred-600 disabled:opacity-50"
+                  >
+                    Reset
+                  </button>
+                </div>
+                {resetResult && (
+                  <div className="mt-2 text-[11.5px] text-edgreen font-semibold">
+                    ✓ Password set to <code className="font-mono bg-white px-1.5 py-0.5 rounded border border-edgreen/30">{resetResult}</code> — share it with the user.
+                  </div>
+                )}
+                <div className="mt-2 text-[10.5px] text-ink-muted leading-relaxed">
+                  Sets the member&apos;s password immediately. They can change it later in Settings.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
