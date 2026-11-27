@@ -12,6 +12,8 @@ import HeroStrip from "@/components/dashboard/hero-strip";
 import KpiTicker, { type TickerItem } from "@/components/dashboard/kpi-ticker";
 import PerformerBoard, { type ScoreRow } from "@/components/dashboard/performer-board";
 import VerticalHeatmap from "@/components/dashboard/vertical-heatmap";
+import MarginTrend from "@/components/dashboard/margin-trend";
+import SegmentMix from "@/components/dashboard/segment-mix";
 import BhTargetPopup from "@/components/dashboard/bh-target-popup";
 import AIInsightsCard from "@/components/ai/ai-insights-card";
 import EmptyState from "@/components/ui/empty-state";
@@ -131,6 +133,21 @@ export default async function DashboardPage() {
     });
     plRows = data ?? [];
   }
+
+  // Product mix — brokerage by line of business (current FY, scoped to BH's vertical)
+  let prodQ = supabase
+    .from("policies")
+    .select("brokerage_amt, product_lines(code, name)")
+    .eq("org_id", orgId)
+    .eq("fiscal_year", "FY 2026-27");
+  if (scopeBU) prodQ = prodQ.eq("business_unit_id", scopeBU.id);
+  const { data: prodRows } = await prodQ;
+  const prodMap = new Map<string, number>();
+  (prodRows ?? []).forEach((p: any) => {
+    const key = p.product_lines?.code ?? "—";
+    prodMap.set(key, (prodMap.get(key) ?? 0) + (Number(p.brokerage_amt) || 0));
+  });
+  const productMix = [...prodMap.entries()].map(([label, value]) => ({ label, value }));
 
   const revenue = Number(kpis?.revenue ?? 0);
   const expense = Number(kpis?.expense ?? 0);
@@ -325,6 +342,11 @@ export default async function DashboardPage() {
       {isCompanyView && top5.length > 0 && <PerformerBoard top={top5} bottom={bottom5} />}
 
       {isCompanyView && scorecard.length > 0 && <VerticalHeatmap rows={scorecard} />}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+        <MarginTrend months={monthly.map((m: any) => ({ label: m.period_label, revenue: m.revenue, expense: m.expense }))} targetPct={20} />
+        <SegmentMix rows={productMix} title={scopeBU ? "🏛 My Product Mix" : "🏛 Product Mix"} />
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-4">
         <div className="lg:col-span-3">
