@@ -12,6 +12,7 @@ const NAV: NavItem[] = [
   { id: "pl", label: "P&L Statement", href: "/pl", icon: "📋", section: "REPORTS" },
   { id: "mom", label: "Month-on-Month P&L", href: "/mom", icon: "📅", section: "REPORTS" },
   { id: "cash-flow", label: "Cash Flow", href: "/cash-flow", icon: "💵", section: "REPORTS" },
+  { id: "clients", label: "Customer List", href: "/clients", icon: "🧾", section: "ANALYTICS" },
   { id: "variance", label: "Variance Analysis", href: "/variance", icon: "📈", section: "ANALYTICS" },
   { id: "vertical", label: "Vertical Performance", href: "/vertical", icon: "👥", section: "ANALYTICS" },
   { id: "vpb", label: "Variable Pay (VPB)", href: "/vpb", icon: "💜", section: "ANALYTICS" },
@@ -46,6 +47,7 @@ const BH_ALLOWED = new Set([
   "/pl",
   "/mom",
   "/vertical",
+  "/clients",
   "/budget-aop",
 ]);
 
