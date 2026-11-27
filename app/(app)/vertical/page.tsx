@@ -11,11 +11,26 @@ export default async function VerticalPage() {
   const supabase = createClient();
   const { data: membership } = (await supabase
     .from("org_members")
-    .select("org_id")
+    .select("org_id, role")
     .limit(1)
-    .single()) as { data: { org_id: string } | null };
+    .single()) as { data: { org_id: string; role: string } | null };
   if (!membership) return null;
   const orgId = membership.org_id;
+  const role = membership.role;
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  let scopeBuId: string | null = null;
+  if (role === "bh" && user) {
+    const { data: myBu } = await supabase
+      .from("business_units")
+      .select("id")
+      .eq("org_id", orgId)
+      .eq("manager_user_id", user.id)
+      .maybeSingle();
+    scopeBuId = (myBu as any)?.id ?? null;
+  }
 
   const [{ data: bus }, { data: members }] = await Promise.all([
     supabase
@@ -99,14 +114,20 @@ export default async function VerticalPage() {
     };
   });
 
+  const shownVerticals = scopeBuId ? verticals.filter((v) => v.id === scopeBuId) : verticals;
+
   return (
     <>
       <PageHeader
         title="Vertical Performance Matrix"
-        subtitle="All Business Heads · Revenue, EBITDA, VPB & Comparisons"
+        subtitle={
+          scopeBuId
+            ? "Your vertical · Revenue, EBITDA, VPB & Comparisons"
+            : "All Business Heads · Revenue, EBITDA, VPB & Comparisons"
+        }
       />
       <VerticalMatrixClient
-        verticals={verticals}
+        verticals={shownVerticals}
         currentPeriodLabel={currentPeriod?.period_label ?? "—"}
       />
       <div className="mt-4">
