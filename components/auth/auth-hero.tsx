@@ -4,10 +4,10 @@
 // MONTHLY MIS loop with the ANNUAL AOP as its yearly anchor. Each step is
 // tagged with its cadence. Pure SVG + CSS, no dependencies.
 const STEPS = [
-  { t: "Close", tag: "Monthly", d: "Month-end actuals in — ledger, payroll & debtors, reconciled." },
-  { t: "Insight", tag: "Monthly", d: "Live P&L, variance, MoM & cash flow — AI on every module." },
+  { t: "MIS", tag: "Monthly", d: "Monthly MIS closure — ledger, payroll & debtors, reconciled." },
   { t: "Forecast", tag: "Monthly", d: "Latest Estimate refreshes the full-year outlook." },
-  { t: "Annual AOP", tag: "Yearly", d: "Build & freeze the plan once a year — board-ready in a click." },
+  { t: "Insight", tag: "Monthly", d: "Live P&L, variance, MoM & cash flow — AI on every module." },
+  { t: "Annual AOP", tag: "Yearly", d: "Build & freeze the AOP — board-ready in a click." },
 ];
 
 export default function AuthHero() {

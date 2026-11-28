@@ -224,16 +224,13 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="mt-6 text-center text-[12px] text-ink-muted">
-          New to FINMIND AI?{" "}
-          <Link href="/signup" className="text-navy font-semibold hover:underline">
-            Create an account
-          </Link>
-        </div>
-
         <div className="mt-6 pt-5 border-t border-[var(--border-2)] flex items-center justify-center gap-1.5 text-[10.5px] text-ink-subtle">
           <LockIcon small />
           256-bit SSL · Edme Insurance Brokers Limited · Strictly Confidential
+        </div>
+        <div className="mt-2 text-center text-[10.5px] text-ink-subtle">
+          Developed &amp; designed by{" "}
+          <span className="font-semibold text-navy">Uttam Singh Adhikari</span>
         </div>
       </div>
     </div>
