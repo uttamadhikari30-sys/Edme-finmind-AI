@@ -22,6 +22,7 @@ const NAV: NavItem[] = [
   { id: "aop-builder", label: "AOP Builder", href: "/aop-builder", icon: "🏗️", section: "PLANNING" },
   { id: "aop-costs", label: "Overhead (Finance)", href: "/aop-costs", icon: "🏦", section: "PLANNING" },
   { id: "aop-board", label: "AOP Board", href: "/aop-board", icon: "🧑‍⚖️", section: "PLANNING" },
+  { id: "aop-financials", label: "AOP Financials", href: "/aop-financials", icon: "📊", section: "PLANNING" },
   { id: "aop-pl", label: "AOP P&L", href: "/aop-pl", icon: "📋", section: "PLANNING" },
   { id: "aop-bs", label: "AOP Balance Sheet", href: "/aop-bs", icon: "🏛", section: "PLANNING" },
   { id: "aop-cfs", label: "AOP Cash Flow", href: "/aop-cfs", icon: "💵", section: "PLANNING" },
