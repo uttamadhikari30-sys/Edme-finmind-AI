@@ -1,13 +1,6 @@
 import AuthHero from "@/components/auth/auth-hero";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
-  const features: [string, string][] = [
-    ["⚡", "Real-time P&L, variance & cash flow"],
-    ["🤖", "Maya — your AI finance analyst, in 4 languages"],
-    ["📊", "Board-ready reports in a single click"],
-    ["🔒", "Bank-grade security · tenant-isolated (RLS)"],
-  ];
-
   return (
     <div className="min-h-screen flex items-stretch bg-[var(--bg)]">
       {/* ── Left brand panel ───────────────────────────────────────── */}
@@ -63,25 +56,13 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
                 style={{ background: "linear-gradient(90deg,#ED1B2F,#C8952A)" }}
               />
               <p className="mt-5 text-[15px] text-white/70 max-w-md leading-relaxed">
-                The MIS &amp; finance command center for Edme — real-time P&amp;L, variance,
-                forecasting and AI insight, in one place.
+                From the first premium booked to the board&apos;s sign-off — one platform runs
+                Edme&apos;s entire annual plan, live.
               </p>
             </div>
 
-            {/* live finance motif */}
+            {/* the FINMIND flow — unique journey stepper */}
             <AuthHero />
-
-            {/* feature list */}
-            <div className="mt-8 space-y-3 max-w-md">
-              {features.map(([icon, text]) => (
-                <div key={text} className="flex items-center gap-3 text-[13px] text-white/80">
-                  <span className="flex-shrink-0 w-7 h-7 rounded-lg bg-white/[0.08] border border-white/12 flex items-center justify-center text-[13px] backdrop-blur-sm">
-                    {icon}
-                  </span>
-                  {text}
-                </div>
-              ))}
-            </div>
           </div>
 
           {/* bottom: company */}
