@@ -1,15 +1,17 @@
 import type { Metadata } from "next";
-import { DM_Sans, Cormorant_Garamond, JetBrains_Mono } from "next/font/google";
+import { Plus_Jakarta_Sans, Fraunces, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
-const dmSans = DM_Sans({
+// Premium UI sans (var name kept for compatibility across the app)
+const dmSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["300", "400", "500", "600", "700", "800"],
   variable: "--font-dm-sans",
   display: "swap",
 });
 
-const cormorant = Cormorant_Garamond({
+// Characterful display serif for hero headings / brand
+const cormorant = Fraunces({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   variable: "--font-cormorant",

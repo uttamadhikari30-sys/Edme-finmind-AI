@@ -47,16 +47,29 @@ export default function HeroStrip({
         className="absolute -right-12 -top-12 w-72 h-72 rounded-full opacity-10 pointer-events-none"
         style={{ background: "radial-gradient(circle, #fff, transparent 70%)" }}
       />
+      {/* fine dot grid + top sheen */}
+      <div
+        className="absolute inset-0 pointer-events-none opacity-[0.10]"
+        style={{ backgroundImage: "radial-gradient(rgba(255,255,255,0.6) 1px, transparent 1px)", backgroundSize: "24px 24px" }}
+      />
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent" />
 
-      <div className="relative z-10 px-7 py-6 flex items-center gap-8 flex-wrap">
+      <div className="relative z-10 px-8 py-7 flex items-center gap-8 flex-wrap">
         <div className="flex-1 min-w-[280px]">
-          <div className="text-[11px] uppercase tracking-[2px] text-white/45 font-bold">
-            FINMIND AI · {periodLabel}
+          <div className="flex items-center gap-2.5">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.06] px-2.5 py-1 text-[10px] font-bold tracking-wide text-white/75 backdrop-blur-sm">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#00d4a8]" style={{ animation: "blink 1.6s infinite" }} />
+              LIVE
+            </span>
+            <span className="text-[11px] uppercase tracking-[2px] text-white/45 font-bold">
+              FINMIND AI · {periodLabel}
+            </span>
           </div>
-          <h1 className="mt-2 font-serif text-[28px] font-bold leading-tight">
+          <h1 className="mt-3 font-serif text-[34px] font-semibold leading-[1.05] tracking-[-0.01em]">
             {greet()}, <span style={{ color: "#FFD580" }}>{userName.split(" ")[0]}</span>
           </h1>
-          <p className="mt-2 text-[13px] text-white/65 max-w-md">
+          <div className="mt-3 h-[3px] w-20 rounded-full" style={{ background: "linear-gradient(90deg,#ED1B2F,#C8952A)" }} />
+          <p className="mt-3.5 text-[13px] text-white/65 max-w-md leading-relaxed">
             Here&apos;s the snapshot for {orgName}. {jeCount} posted entries this period.
             All numbers update live with FX and ₹ View settings.
           </p>
@@ -86,10 +99,11 @@ export default function HeroStrip({
 
 function HeroStat({ label, value, accent }: { label: string; value: string; accent: string }) {
   return (
-    <div className="bg-white/[0.07] backdrop-blur rounded-xl px-5 py-3.5 border border-white/10 min-w-[140px]">
+    <div className="relative bg-white/[0.07] backdrop-blur rounded-xl pl-5 pr-5 py-3.5 border border-white/10 min-w-[144px] overflow-hidden">
+      <span className="absolute left-0 top-0 bottom-0 w-[3px] rounded-r" style={{ background: accent, opacity: 0.85 }} />
       <div className="text-[10px] uppercase tracking-[1.5px] font-bold text-white/55">{label}</div>
       <div
-        className="mt-1.5 font-mono text-[22px] font-bold leading-none"
+        className="mt-1.5 font-mono text-[23px] font-bold leading-none"
         style={{ color: accent }}
       >
         {value}

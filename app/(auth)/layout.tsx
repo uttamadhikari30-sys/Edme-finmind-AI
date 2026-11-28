@@ -1,3 +1,5 @@
+import AuthHero from "@/components/auth/auth-hero";
+
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   const features: [string, string][] = [
     ["⚡", "Real-time P&L, variance & cash flow"],
@@ -66,11 +68,14 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
               </p>
             </div>
 
+            {/* live finance motif */}
+            <AuthHero />
+
             {/* feature list */}
-            <div className="mt-10 space-y-3.5 max-w-md">
+            <div className="mt-8 space-y-3 max-w-md">
               {features.map(([icon, text]) => (
-                <div key={text} className="flex items-center gap-3 text-[13.5px] text-white/85">
-                  <span className="flex-shrink-0 w-8 h-8 rounded-lg bg-white/[0.08] border border-white/12 flex items-center justify-center text-[14px] backdrop-blur-sm">
+                <div key={text} className="flex items-center gap-3 text-[13px] text-white/80">
+                  <span className="flex-shrink-0 w-7 h-7 rounded-lg bg-white/[0.08] border border-white/12 flex items-center justify-center text-[13px] backdrop-blur-sm">
                     {icon}
                   </span>
                   {text}
