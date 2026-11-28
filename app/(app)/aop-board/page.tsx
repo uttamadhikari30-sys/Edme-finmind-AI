@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth";
 import PageHeader from "@/components/ui/page-header";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import FreezeControl from "@/components/aop/freeze-control";
+import AIInsightsCard from "@/components/ai/ai-insights-card";
 
 export const dynamic = "force-dynamic";
 
@@ -176,6 +177,25 @@ export default async function AopBoardPage() {
           </table>
         </CardBody>
       </Card>
+
+      <div className="mt-4">
+        <AIInsightsCard
+          page="budget-aop"
+          density="wide"
+          title="🤖 FINMIND Board Advisor"
+          context={{
+            org: "Edme Insurance Brokers Limited",
+            plan_fy: PLAN_FY,
+            status,
+            committed_brokerage_lakh: +(tot.cb / 1e5).toFixed(1),
+            total_cost_lakh: +((tot.pc + tot.dc) / 1e5).toFixed(1),
+            aop_profit_lakh: +(tot.profit / 1e5).toFixed(1),
+            margin_pct: +totMargin.toFixed(1),
+            verticals: rows.length,
+            top_vertical: rows.slice().sort((a, b) => b.cb - a.cb)[0]?.name ?? "—",
+          }}
+        />
+      </div>
     </>
   );
 }

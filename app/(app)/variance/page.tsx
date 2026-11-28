@@ -5,6 +5,7 @@ import PageHeader from "@/components/ui/page-header";
 import EmptyState from "@/components/ui/empty-state";
 import { formatINR, formatPct } from "@/lib/utils";
 import PeriodSelector from "@/components/ui/period-selector";
+import AIInsightsCard from "@/components/ai/ai-insights-card";
 
 export const dynamic = "force-dynamic";
 
@@ -106,6 +107,31 @@ export default async function VariancePage({
           <VarianceTable rows={expense} />
         </CardBody>
       </Card>
+
+      <div className="mt-4">
+        <AIInsightsCard
+          page="variance"
+          density="wide"
+          title="🤖 FINMIND Advisor"
+          context={{
+            org: "Edme Insurance Brokers Limited",
+            revenue_actual_lakh: +(totals.actualRev / 1e5).toFixed(1),
+            revenue_budget_lakh: +(totals.budgetRev / 1e5).toFixed(1),
+            revenue_variance_lakh: +(totalsVarRev / 1e5).toFixed(1),
+            expense_actual_lakh: +(totals.actualExp / 1e5).toFixed(1),
+            expense_budget_lakh: +(totals.budgetExp / 1e5).toFixed(1),
+            expense_variance_lakh: +(totalsVarExp / 1e5).toFixed(1),
+            net_actual_lakh: +(netActual / 1e5).toFixed(1),
+            net_budget_lakh: +(netBudget / 1e5).toFixed(1),
+            top_adverse_revenue: revenue
+              .map((r: any) => ({ name: r.account_name, v: Number(r.actual) - Number(r.budget) }))
+              .filter((x) => x.v < 0)
+              .sort((a, b) => a.v - b.v)
+              .slice(0, 3)
+              .map((x) => x.name),
+          }}
+        />
+      </div>
     </>
   );
 }

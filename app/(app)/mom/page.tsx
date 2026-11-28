@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
 import PageHeader from "@/components/ui/page-header";
 import MoMTrackerClient from "@/components/mom/mom-tracker-client";
+import AIInsightsCard from "@/components/ai/ai-insights-card";
 
 export const dynamic = "force-dynamic";
 
@@ -108,6 +109,22 @@ export default async function MoMPLPage() {
     .eq("org_id", orgId)
     .order("code");
 
+  const mArr = (monthly as any[]) ?? [];
+  const momRev = mArr.reduce((s, m) => s + (Number(m.revenue) || 0), 0);
+  const momExp = mArr.reduce((s, m) => s + (Number(m.expense) || 0), 0);
+  const momNet = mArr.reduce((s, m) => s + (Number(m.net_income) || 0), 0);
+  const actualMonths = mArr.filter((m) => (Number(m.revenue) || 0) > 0).length;
+  const momCtx = {
+    org: "Edme Insurance Brokers Limited",
+    scope: scopeBuId ? "single vertical" : "company-wide",
+    actual_months: actualMonths,
+    ytd_revenue_lakh: +(momRev / 1e5).toFixed(1),
+    ytd_expense_lakh: +(momExp / 1e5).toFixed(1),
+    ytd_ebitda_lakh: +(momNet / 1e5).toFixed(1),
+    ytd_margin_pct: momRev > 0 ? +((momNet / momRev) * 100).toFixed(1) : 0,
+    avg_monthly_revenue_lakh: actualMonths > 0 ? +(momRev / actualMonths / 1e5).toFixed(1) : 0,
+  };
+
   return (
     <>
       <PageHeader
@@ -128,6 +145,10 @@ export default async function MoMPLPage() {
         expenseByAccount={expenseByAccount}
         aopByAccount={aopByAccount}
       />
+
+      <div className="mt-4">
+        <AIInsightsCard page="mom" density="wide" title="🤖 FINMIND Advisor" context={momCtx} />
+      </div>
     </>
   );
 }

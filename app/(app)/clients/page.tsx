@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
 import PageHeader from "@/components/ui/page-header";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import AIInsightsCard from "@/components/ai/ai-insights-card";
 
 export const dynamic = "force-dynamic";
 
@@ -161,6 +162,23 @@ export default async function ClientsPage() {
           </table>
         </CardBody>
       </Card>
+
+      <div className="mt-4">
+        <AIInsightsCard
+          page="clients"
+          density="wide"
+          title="🤖 FINMIND Advisor"
+          context={{
+            org: "Edme Insurance Brokers Limited",
+            scope: scopeBuId ? "single vertical" : "company-wide",
+            total_clients: rows.length,
+            new_clients: nNew,
+            cross_sell_clients: nUpsell,
+            lost_clients: nLost,
+            total_brokerage_lakh: +(totalBrok / 1e5).toFixed(1),
+          }}
+        />
+      </div>
     </>
   );
 }

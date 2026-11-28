@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
 import PageHeader from "@/components/ui/page-header";
 import BudgetAopClient from "@/components/budget/budget-aop-client";
+import AIInsightsCard from "@/components/ai/ai-insights-card";
 
 export const dynamic = "force-dynamic";
 
@@ -97,6 +98,20 @@ export default async function BudgetAopPage() {
         members={(members as any[]) ?? []}
         fyActuals={Object.fromEntries(fyActuals)}
       />
+
+      <div className="mt-4">
+        <AIInsightsCard
+          page="budget-aop"
+          density="wide"
+          title="🤖 FINMIND AOP Advisor"
+          context={{
+            org: "Edme Insurance Brokers Limited",
+            verticals: (bus ?? []).length,
+            budgets_defined: (budgets ?? []).length,
+            stage: "annual operating plan — bottom-up BH submission → Finance consolidation → CFO/CEO approval",
+          }}
+        />
+      </div>
     </>
   );
 }

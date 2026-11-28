@@ -68,6 +68,26 @@ const FALLBACK_INSIGHTS: Record<string, any[]> = {
     { icon: "📊", tone: "info", title: "Forecast quality", body: "3-month moving average is solid for run-rate. Strip one-time wins from base for cleaner LE." },
     { icon: "🎯", tone: "opportunity", title: "H2 push", body: "Q3 (Oct–Dec) corporate renewals + Q4 (Jan–Mar) new business = biggest LE upside window." },
   ],
+  mom: [
+    { icon: "📊", tone: "info", title: "Phasing discipline", body: "Flag any month where actual swings >15% from AOP phasing — usually a timing issue or a slipped renewal." },
+    { icon: "🎯", tone: "opportunity", title: "Run-rate check", body: "If YTD run-rate beats AOP, pull forward Q4 pipeline; if behind, re-phase the back half now." },
+  ],
+  "budget-aop": [
+    { icon: "🎯", tone: "opportunity", title: "Stretch vs commit", body: "Hold a committed AOP and a +10% stretch. Board approves commit; BHs chase stretch for VPB." },
+    { icon: "⚠️", tone: "warn", title: "Cost creep", body: "Keep total cost growth below revenue growth so EBITDA margin expands year on year." },
+  ],
+  variance: [
+    { icon: "⚠️", tone: "warn", title: "Adverse variance focus", body: "Chase the 3 largest adverse revenue variances first — 80% of the gap usually sits in a few accounts." },
+    { icon: "📊", tone: "info", title: "Favourable cost = real?", body: "A favourable cost variance can be a timing lag. Confirm accruals before calling it a saving." },
+  ],
+  clients: [
+    { icon: "🎯", tone: "opportunity", title: "Cross-sell base", body: "Single-product clients are your fastest growth. Target one new line per top-20 account this year." },
+    { icon: "🛡", tone: "protective", title: "Retention risk", body: "Clients with falling brokerage YoY are churn signals — schedule a renewal review before expiry." },
+  ],
+  "client-movement": [
+    { icon: "⚠️", tone: "warn", title: "Win-back lost book", body: "Lost clients carried real brokerage. Assign owners to the top lapsed accounts for a win-back push." },
+    { icon: "💡", tone: "good", title: "New-addition momentum", body: "Document what won the new accounts and replicate the pitch across the vertical." },
+  ],
   "aop-builder": [
     { icon: "🎯", tone: "opportunity", title: "Pipeline conversion", body: "Lift new-business pipeline above the 60% threshold to convert it into committed brokerage before freeze." },
     { icon: "💡", tone: "good", title: "Renewal base", body: "Price renewals at last year's premium × 1.1 minimum. Renewal brokerage always counts toward AOP." },
