@@ -27,8 +27,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         {/* top hairline sheen */}
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent" />
 
-        <div className="relative z-10 flex flex-col justify-between px-12 py-7 w-full overflow-y-auto">
-          <div>
+        <div className="relative z-10 flex flex-col justify-center px-12 py-8 w-full overflow-y-auto">
+          <div className="max-w-md w-full">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/edme-logo.png"
@@ -55,7 +55,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
                 className="mt-3 h-[3px] w-24 rounded-full"
                 style={{ background: "linear-gradient(90deg,#ED1B2F,#C8952A)" }}
               />
-              <p className="mt-3.5 text-[13px] text-white/70 max-w-md leading-relaxed">
+              <p className="mt-3.5 text-[13px] text-white/70 leading-relaxed">
                 Edme&apos;s monthly MIS and annual AOP in one platform — live P&amp;L, variance,
                 forecasting and board-ready plans.
               </p>
@@ -63,21 +63,21 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
             {/* the FINMIND rhythm — unique cadence stepper */}
             <AuthHero />
-          </div>
 
-          {/* bottom: company */}
-          <div className="max-w-md mt-6">
-            <div className="text-[12.5px] font-bold text-white">Edme Insurance Brokers Limited</div>
-            <div className="mt-1.5 flex items-center justify-between text-[11px]">
-              <a
-                href="https://www.edmeinsurance.com/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-white/80 hover:text-white underline-offset-2 hover:underline transition"
-              >
-                www.edmeinsurance.com
-              </a>
-              <span className="text-white/40">© Edme 2026 · Mumbai, India</span>
+            {/* company — part of the centered block, no pinned gap */}
+            <div className="mt-7 pt-5 border-t border-white/10">
+              <div className="text-[12.5px] font-bold text-white">Edme Insurance Brokers Limited</div>
+              <div className="mt-1.5 flex items-center justify-between text-[11px]">
+                <a
+                  href="https://www.edmeinsurance.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-white/80 hover:text-white underline-offset-2 hover:underline transition"
+                >
+                  www.edmeinsurance.com
+                </a>
+                <span className="text-white/40">© Edme 2026 · Mumbai, India</span>
+              </div>
             </div>
           </div>
         </div>
