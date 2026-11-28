@@ -2,7 +2,7 @@ import AuthHero from "@/components/auth/auth-hero";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen flex items-stretch bg-[var(--bg)]">
+    <div className="h-screen overflow-hidden flex items-stretch bg-[var(--bg)]">
       {/* ── Left brand panel ───────────────────────────────────────── */}
       <div
         className="hidden lg:flex lg:w-[46%] relative overflow-hidden text-white"
@@ -27,71 +27,64 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         {/* top hairline sheen */}
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent" />
 
-        <div className="relative z-10 flex flex-col justify-between px-14 py-12 w-full">
+        <div className="relative z-10 flex flex-col justify-between px-12 py-7 w-full overflow-y-auto">
           <div>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/edme-logo.png"
               alt="Edme Insurance Brokers"
               style={{
-                height: "42px",
+                height: "34px",
                 width: "auto",
-                maxWidth: "200px",
+                maxWidth: "190px",
                 objectFit: "contain",
                 filter: "brightness(0) invert(1)",
               }}
             />
 
-            <div className="mt-14">
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] font-semibold tracking-wide text-white/80 backdrop-blur-sm">
+            <div className="mt-6">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[10.5px] font-semibold tracking-wide text-white/80 backdrop-blur-sm">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#00d4a8]" style={{ animation: "blink 1.6s infinite" }} />
                 Enterprise Finance Intelligence
               </div>
 
-              <div className="mt-6 font-serif text-[66px] font-bold leading-[0.95] tracking-tight">
+              <div className="mt-4 font-serif text-[48px] font-bold leading-[0.95] tracking-tight">
                 FINMIND <span style={{ color: "#ED1B2F" }}>AI</span>
               </div>
               <div
-                className="mt-4 h-[3px] w-28 rounded-full"
+                className="mt-3 h-[3px] w-24 rounded-full"
                 style={{ background: "linear-gradient(90deg,#ED1B2F,#C8952A)" }}
               />
-              <p className="mt-5 text-[15px] text-white/70 max-w-md leading-relaxed">
-                From the first premium booked to the board&apos;s sign-off — one platform runs
-                Edme&apos;s entire annual plan, live.
+              <p className="mt-3.5 text-[13px] text-white/70 max-w-md leading-relaxed">
+                Edme&apos;s monthly MIS and annual AOP in one platform — live P&amp;L, variance,
+                forecasting and board-ready plans.
               </p>
             </div>
 
-            {/* the FINMIND flow — unique journey stepper */}
+            {/* the FINMIND rhythm — unique cadence stepper */}
             <AuthHero />
           </div>
 
           {/* bottom: company */}
-          <div className="max-w-md">
-            <div className="text-[13px] font-bold text-white">Edme Insurance Brokers Limited</div>
-            <div className="mt-2.5 flex items-start gap-2 text-[12px] text-white/55 leading-relaxed">
-              <span className="mt-0.5">📍</span>
-              <span>
-                VIOS Tower, 6th Floor, Off Eastern Express Highway, Sewri – Chembur Rd, Mumbai
-                400037, Maharashtra, India
-              </span>
-            </div>
-            <div className="mt-2.5 flex items-center justify-between">
+          <div className="max-w-md mt-6">
+            <div className="text-[12.5px] font-bold text-white">Edme Insurance Brokers Limited</div>
+            <div className="mt-1.5 flex items-center justify-between text-[11px]">
               <a
                 href="https://www.edmeinsurance.com/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[12px] text-white/80 hover:text-white underline-offset-2 hover:underline transition"
+                className="text-white/80 hover:text-white underline-offset-2 hover:underline transition"
               >
                 www.edmeinsurance.com
               </a>
-              <span className="text-[11px] text-white/40">© Edme 2026 · All rights reserved</span>
+              <span className="text-white/40">© Edme 2026 · Mumbai, India</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* ── Right form panel ───────────────────────────────────────── */}
-      <div className="flex-1 flex items-center justify-center p-6 lg:p-10 relative">
+      <div className="flex-1 flex items-center justify-center p-6 lg:p-8 relative overflow-y-auto">
         <div
           className="absolute inset-0 pointer-events-none opacity-60"
           style={{
