@@ -21,7 +21,11 @@ import { formatPct } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams?: { bu?: string };
+}) {
   await requireUser();
   const supabase = createClient();
 
@@ -64,8 +68,10 @@ export default async function DashboardPage() {
     .gte("end_date", today)
     .maybeSingle();
 
-  // Role-based scope: a Business Head sees only their own vertical.
+  // Role-based scope: a Business Head sees only their own vertical (locked).
+  // Admins (owner/cfo/ceo) can drill into any vertical via the ?bu= View dropdown.
   let scopeBU: { id: string; name: string } | null = null;
+  let bhLocked = false;
   if (role === "bh" && user) {
     const { data: bu } = await supabase
       .from("business_units")
@@ -73,7 +79,10 @@ export default async function DashboardPage() {
       .eq("org_id", orgId)
       .eq("manager_user_id", user.id)
       .maybeSingle();
-    if (bu) scopeBU = bu as { id: string; name: string };
+    if (bu) { scopeBU = bu as { id: string; name: string }; bhLocked = true; }
+  } else if (searchParams?.bu) {
+    const sel = ((verticalsList as any[]) ?? []).find((v) => v.id === searchParams.bu);
+    if (sel) scopeBU = { id: sel.id, name: sel.name };
   }
 
   let kpis: any = null;
@@ -114,7 +123,7 @@ export default async function DashboardPage() {
     });
     scorecard = (data as ScoreRow[]) ?? [];
   }
-  const isCompanyView = ["owner", "cfo", "ceo"].includes(role);
+  const isCompanyView = ["owner", "cfo", "ceo"].includes(role) && !scopeBU;
   const top5 = scorecard.slice(0, 5);
   const bottom5 = scorecard.slice(-5).reverse();
   const bhRow = scopeBU ? scorecard.find((r) => r.bu_id === scopeBU!.id) ?? null : null;
@@ -299,16 +308,26 @@ export default async function DashboardPage() {
 
   return (
     <>
-      {scopeBU && bhRow && (
-        <BhTargetPopup row={bhRow} name={scopeBU.name} period={periodToday?.period_label ?? "this period"} />
+      {bhLocked && bhRow && (
+        <BhTargetPopup row={bhRow} name={scopeBU!.name} period={periodToday?.period_label ?? "this period"} />
       )}
 
-      {scopeBU && (
+      {bhLocked && (
         <div className="mb-4 rounded-xl border border-navy/15 bg-navy-50/50 px-4 py-2.5 flex items-center gap-2 text-[12.5px]">
           <span className="text-[15px]">🎯</span>
           <span className="text-ink-muted">
-            You&apos;re viewing <b className="text-navy">{scopeBU.name}</b> — your vertical only. Company-wide
+            You&apos;re viewing <b className="text-navy">{scopeBU!.name}</b> — your vertical only. Company-wide
             figures are visible to CFO / CEO / Admin.
+          </span>
+        </div>
+      )}
+
+      {!bhLocked && scopeBU && (
+        <div className="mb-4 rounded-xl border border-gold/30 bg-gold/10 px-4 py-2.5 flex items-center gap-2 text-[12.5px]">
+          <span className="text-[15px]">🔎</span>
+          <span className="text-ink-muted">
+            Drilled into <b className="text-navy">{scopeBU.name}</b>. Switch the <b>View</b> back to
+            “Company — Consolidated” for company-wide figures.
           </span>
         </div>
       )}
@@ -329,11 +348,12 @@ export default async function DashboardPage() {
       <DashboardControls
         periodLabel={periodToday?.period_label ?? "—"}
         verticals={
-          scopeBU
+          bhLocked
             ? ((verticalsList as any[]) ?? []).filter((v) => v.id === scopeBU!.id)
             : (verticalsList as any[]) ?? []
         }
-        lockVertical={!!scopeBU}
+        lockVertical={bhLocked}
+        selectedVertical={scopeBU?.id ?? ""}
       />
 
       <DashboardKpisClient kpis={mainKpis} />

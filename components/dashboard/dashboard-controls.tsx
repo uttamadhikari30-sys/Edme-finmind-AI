@@ -11,15 +11,19 @@ export default function DashboardControls({
   periodLabel,
   verticals = [],
   lockVertical = false,
+  selectedVertical = "",
 }: {
   periodLabel: string;
   verticals?: { id: string; code: string; name: string }[];
   lockVertical?: boolean;
+  selectedVertical?: string;
 }) {
   const router = useRouter();
   const [drill, setDrill] = useState<Drill>("ftm");
   const [view, setView] = useState<"actual" | "aop" | "py" | "le">("aop");
-  const [vertical, setVertical] = useState(lockVertical && verticals[0] ? verticals[0].id : "");
+  const [vertical, setVertical] = useState(
+    selectedVertical || (lockVertical && verticals[0] ? verticals[0].id : "")
+  );
 
   function pickVertical(v: string) {
     setVertical(v);

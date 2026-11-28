@@ -18,6 +18,28 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
+  const [ssoLoading, setSsoLoading] = useState(false);
+  async function signInWithMicrosoft() {
+    setError(null);
+    setSsoLoading(true);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "azure",
+      options: {
+        scopes: "openid profile email",
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+    if (error) {
+      setSsoLoading(false);
+      setError(
+        error.message?.includes("provider is not enabled")
+          ? "Microsoft 365 sign-in isn't enabled yet. Ask your admin to turn on the Azure provider in Supabase."
+          : error.message
+      );
+    }
+    // On success the browser is redirected to Microsoft, so no further action here.
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -182,6 +204,24 @@ export default function LoginPage() {
                 )}
             </span>
           </button>
+
+          {/* SSO divider */}
+          <div className="flex items-center gap-3 pt-1">
+            <div className="h-px flex-1 bg-[var(--border-2)]" />
+            <span className="text-[10.5px] uppercase tracking-wider text-ink-subtle font-semibold">or</span>
+            <div className="h-px flex-1 bg-[var(--border-2)]" />
+          </div>
+
+          {/* Microsoft 365 SSO */}
+          <button
+            type="button"
+            onClick={signInWithMicrosoft}
+            disabled={ssoLoading}
+            className="w-full flex items-center justify-center gap-2.5 rounded-xl border border-[var(--border)] bg-white py-3 text-[13.5px] font-semibold text-ink hover:border-navy hover:bg-navy/[0.02] transition disabled:opacity-60"
+          >
+            <MicrosoftIcon />
+            {ssoLoading ? "Redirecting to Microsoft…" : "Continue with Microsoft 365"}
+          </button>
         </form>
 
         <div className="mt-6 text-center text-[12px] text-ink-muted">
@@ -223,6 +263,16 @@ function Field({
 }
 
 /* ── Inline icons (premium, theme-agnostic) ──────────────────────────── */
+function MicrosoftIcon() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 23 23" aria-hidden="true">
+      <rect x="1" y="1" width="10" height="10" fill="#F25022" />
+      <rect x="12" y="1" width="10" height="10" fill="#7FBA00" />
+      <rect x="1" y="12" width="10" height="10" fill="#00A4EF" />
+      <rect x="12" y="12" width="10" height="10" fill="#FFB900" />
+    </svg>
+  );
+}
 function MailIcon({ small }: { small?: boolean }) {
   const s = small ? 13 : 17;
   return (
