@@ -88,6 +88,11 @@ const FALLBACK_INSIGHTS: Record<string, any[]> = {
     { icon: "⚠️", tone: "warn", title: "Win-back lost book", body: "Lost clients carried real brokerage. Assign owners to the top lapsed accounts for a win-back push." },
     { icon: "💡", tone: "good", title: "New-addition momentum", body: "Document what won the new accounts and replicate the pitch across the vertical." },
   ],
+  "debtors-payables": [
+    { icon: "⚠️", tone: "warn", title: "Chase 90+ first", body: "90+ day receivables are the highest write-off risk. Escalate those to the RI/Corporate lead this week." },
+    { icon: "💰", tone: "cash", title: "DSO discipline", body: "Every 5 days of DSO reduction frees working capital. Target < 45 days across Corporate and RI books." },
+    { icon: "🎯", tone: "opportunity", title: "Prioritise by value", body: "Collect the top 5 outstanding accounts to clear the bulk of exposure fast — focus effort, not volume." },
+  ],
   "aop-builder": [
     { icon: "🎯", tone: "opportunity", title: "Pipeline conversion", body: "Lift new-business pipeline above the 60% threshold to convert it into committed brokerage before freeze." },
     { icon: "💡", tone: "good", title: "Renewal base", body: "Price renewals at last year's premium × 1.1 minimum. Renewal brokerage always counts toward AOP." },

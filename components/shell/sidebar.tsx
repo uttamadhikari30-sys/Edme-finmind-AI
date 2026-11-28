@@ -17,6 +17,7 @@ const NAV: NavItem[] = [
   { id: "variance", label: "Variance Analysis", href: "/variance", icon: "📈", section: "ANALYTICS" },
   { id: "vertical", label: "Vertical Performance", href: "/vertical", icon: "👥", section: "ANALYTICS" },
   { id: "vpb", label: "Variable Pay (VPB)", href: "/vpb", icon: "💜", section: "ANALYTICS" },
+  { id: "debtors-payables", label: "Debtors & Payables", href: "/debtors-payables", icon: "💳", section: "LEDGER" },
   { id: "le-forecast", label: "LE & Forecast", href: "/le-forecast", icon: "🔮", section: "PLANNING" },
   { id: "budget-aop", label: "Budget / AOP", href: "/budget-aop", icon: "🎯", section: "PLANNING" },
   { id: "aop-builder", label: "AOP Builder", href: "/aop-builder", icon: "🏗️", section: "PLANNING" },
