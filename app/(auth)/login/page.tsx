@@ -17,6 +17,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
 
   const [ssoLoading, setSsoLoading] = useState(false);
   async function signInWithMicrosoft() {
@@ -53,13 +55,27 @@ export default function LoginPage() {
       router.push("/dashboard");
       router.refresh();
     } else {
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
-      });
-      setLoading(false);
-      if (error) return setError(error.message);
-      setInfo(`One-time login link sent to ${email}. Check your inbox.`);
+      // OTP: step 1 send the 6-digit code, step 2 verify it
+      if (!otpSent) {
+        const { error } = await supabase.auth.signInWithOtp({
+          email,
+          options: { shouldCreateUser: false },
+        });
+        setLoading(false);
+        if (error) return setError(error.message);
+        setOtpSent(true);
+        setInfo(`We sent a 6-digit code to ${email}. Enter it below.`);
+      } else {
+        const { error } = await supabase.auth.verifyOtp({
+          email,
+          token: otpCode.trim(),
+          type: "email",
+        });
+        setLoading(false);
+        if (error) return setError(error.message);
+        router.push("/dashboard");
+        router.refresh();
+      }
     }
   }
 
@@ -114,7 +130,7 @@ export default function LoginPage() {
               <button
                 key={m}
                 type="button"
-                onClick={() => setMode(m)}
+                onClick={() => { setMode(m); setOtpSent(false); setOtpCode(""); setError(null); setInfo(null); }}
                 className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11.5px] font-semibold transition ${
                   mode === m
                     ? "bg-white text-navy shadow-[0_2px_8px_rgba(28,54,135,0.10)]"
@@ -122,7 +138,7 @@ export default function LoginPage() {
                 }`}
               >
                 {m === "password" ? <LockIcon small /> : <MailIcon small />}
-                {m === "password" ? "Password" : "Email link"}
+                {m === "password" ? "Password" : "OTP"}
               </button>
             ))}
           </div>
@@ -166,10 +182,29 @@ export default function LoginPage() {
             </Field>
           )}
 
-          {mode === "otp" && (
+          {mode === "otp" && !otpSent && (
             <p className="text-[11.5px] text-ink-muted bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 leading-relaxed">
-              We&apos;ll email you a secure one-time link — no password needed.
+              We&apos;ll email you a 6-digit one-time passcode — no password needed.
             </p>
+          )}
+          {mode === "otp" && otpSent && (
+            <Field label="One-time passcode">
+              <div className="relative group">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-subtle group-focus-within:text-navy transition">
+                  <LockIcon />
+                </span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                  required
+                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] pl-11 pr-3 py-3 text-sm tracking-[4px] font-mono text-ink focus:border-navy focus:bg-white focus:ring-4 focus:ring-navy/10 outline-none transition"
+                  placeholder="Enter 6-digit code"
+                />
+              </div>
+            </Field>
           )}
 
           {error && (
@@ -195,10 +230,16 @@ export default function LoginPage() {
               {loading
                 ? mode === "password"
                   ? "Signing in…"
-                  : "Sending link…"
+                  : otpSent
+                  ? "Verifying…"
+                  : "Sending code…"
                 : (
                   <>
-                    {mode === "password" ? "Sign in to FINMIND AI" : "Email me a login link"}
+                    {mode === "password"
+                      ? "Sign in to FINMIND AI"
+                      : otpSent
+                      ? "Verify & sign in"
+                      : "Send OTP code"}
                     <ArrowIcon />
                   </>
                 )}

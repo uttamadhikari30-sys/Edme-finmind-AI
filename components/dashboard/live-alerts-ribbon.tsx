@@ -18,7 +18,7 @@ export default function LiveAlertsRibbon({ alerts }: { alerts: Alert[] }) {
   return (
     <div className="rounded-xl bg-gradient-to-r from-gold-50 via-white to-edgreen-50 border border-[var(--border)] px-4 py-2.5 mb-4 flex items-center gap-3 overflow-hidden">
       <span className="text-[10px] font-bold uppercase tracking-[1.5px] text-gold flex items-center gap-1.5 flex-shrink-0">
-        ⚡ Live Alerts
+        ⚡ FTM Update
       </span>
       <div className="alert-marquee">
         <div className="alert-marquee-inner">

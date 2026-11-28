@@ -1,23 +1,16 @@
+import { Suspense } from "react";
 import AuthHero from "@/components/auth/auth-hero";
+import AuthBackground from "@/components/auth/auth-background";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <div
       className="min-h-screen w-full flex items-center justify-center p-4 sm:p-6 relative overflow-hidden"
-      style={{ background: "linear-gradient(135deg,#050d24 0%,#0b1a45 48%,#1C3687 100%)" }}
+      style={{ background: "#0b1a45" }}
     >
-      {/* full-screen aurora + dot grid */}
-      <div
-        className="absolute inset-0 pointer-events-none auth-aurora"
-        style={{
-          backgroundImage:
-            "radial-gradient(38% 38% at 80% 8%, rgba(237,27,47,0.42), transparent 70%), radial-gradient(42% 42% at 8% 92%, rgba(200,149,42,0.32), transparent 70%), radial-gradient(40% 40% at 95% 95%, rgba(124,58,237,0.30), transparent 70%)",
-        }}
-      />
-      <div
-        className="absolute inset-0 pointer-events-none opacity-[0.10]"
-        style={{ backgroundImage: "radial-gradient(rgba(255,255,255,0.5) 1px, transparent 1px)", backgroundSize: "26px 26px" }}
-      />
+      <Suspense fallback={null}>
+        <AuthBackground />
+      </Suspense>
 
       {/* ── Centered login card ─────────────────────────────────────── */}
       <div

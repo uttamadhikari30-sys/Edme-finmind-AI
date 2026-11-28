@@ -11,7 +11,7 @@ export type TickerItem = {
  */
 export default function KpiTicker({
   items,
-  label = "LIVE",
+  label = "YTD Update",
 }: {
   items: TickerItem[];
   label?: string;

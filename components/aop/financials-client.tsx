@@ -41,8 +41,14 @@ export default function FinancialsClient({
   const [o, setO] = useState<Opening>(initialOpening);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [achievement, setAchievement] = useState(100);
 
-  const fin = useMemo(() => computeFinancials(aop, o, weights), [aop, o, weights]);
+  // Target-achievement scaling: revenue flexes with achievement %, cost stays at plan.
+  const scaledAop = useMemo(
+    () => ({ ...aop, revenue: aop.revenue * (achievement / 100) }),
+    [aop, achievement]
+  );
+  const fin = useMemo(() => computeFinancials(scaledAop, o, weights), [scaledAop, o, weights]);
 
   function set(key: keyof Opening, v: number) {
     setO((prev) => ({ ...prev, [key]: v }));
@@ -68,6 +74,33 @@ export default function FinancialsClient({
 
   return (
     <div className="space-y-4">
+      {/* Target achievement selector */}
+      <Card>
+        <CardBody className="py-3 flex items-center gap-3 flex-wrap">
+          <span className="text-[11px] uppercase tracking-wider font-bold text-ink-subtle">Target Achievement</span>
+          <div className="flex gap-1 p-0.5 rounded-lg bg-navy/5">
+            {[70, 80, 90, 100].map((p) => (
+              <button key={p} onClick={() => setAchievement(p)}
+                className={`px-3.5 py-1.5 rounded-md text-[12px] font-bold transition ${
+                  achievement === p ? "bg-navy text-white shadow-soft" : "text-ink-muted hover:text-navy"
+                }`}>
+                {p}%
+              </button>
+            ))}
+          </div>
+          <span className="text-[11px] text-ink-subtle">or</span>
+          <div className="flex items-center gap-1.5">
+            <input type="number" value={achievement}
+              onChange={(e) => setAchievement(Math.max(0, Math.min(200, Number(e.target.value) || 0)))}
+              className="w-20 rounded-md border border-[var(--border)] bg-white px-2 py-1.5 text-[12.5px] text-right font-mono focus:border-navy outline-none" />
+            <span className="text-[12px] text-ink-muted">% custom</span>
+          </div>
+          <span className="ml-auto text-[11px] text-ink-muted">
+            Revenue scales with achievement; cost held at plan — all three statements re-flow live.
+          </span>
+        </CardBody>
+      </Card>
+
       {/* KPI band */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <Metric label="Revenue (Brokerage)" value={L(fin.pl.revenue)} tone="green" />
