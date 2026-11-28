@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { computeFinancials, type Opening, type AopInputs } from "@/lib/aop-financials";
+import EngineStatementTable from "@/components/aop/engine-statement-table";
 
 const L = (v: number) => `₹${(v / 1e5).toFixed(2)} L`;
 
@@ -105,9 +106,8 @@ export default function FinancialsClient({
         </CardBody>
       </Card>
 
-      {/* Statement(s) */}
-      <div className={view === "all" ? "grid grid-cols-1 lg:grid-cols-3 gap-4" : "max-w-xl"}>
-        {(view === "all" || view === "pl") && (
+      {view === "all" ? (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <Statement title="AOP P&L" rows={[
             ["Revenue (Brokerage)", fin.pl.revenue, "navy", true],
             ["BH Cost (hiring + direct)", -fin.pl.bhCost, "red"],
@@ -118,8 +118,6 @@ export default function FinancialsClient({
             [`Tax (${o.tax_rate}%)`, -fin.pl.tax, "red"],
             ["PAT", fin.pl.pat, "purple", true],
           ]} />
-        )}
-        {(view === "all" || view === "bs") && (
           <Statement title="Balance Sheet (Closing)" rows={[
             ["Cash & bank", fin.bs.cash, "navy"],
             ["Receivables", fin.bs.receivables, "navy"],
@@ -132,91 +130,24 @@ export default function FinancialsClient({
             ["Reserves & surplus", fin.bs.reserves, "navy"],
             ["Total Equity + Liab.", fin.bs.totalEquityLiab, "green", true],
           ]} />
-        )}
-        {(view === "all" || view === "cfs") && (
           <Statement title="Cash Flow" rows={[
             ["PAT", fin.cf.pat, "navy"],
             ["+ Depreciation", fin.cf.depreciation, "green"],
-            ["− Δ Receivables", -fin.cf.deltaReceivables, fin.cf.deltaReceivables <= 0 ? "green" : "red"],
-            ["+ Δ Payables", fin.cf.deltaPayables, fin.cf.deltaPayables >= 0 ? "green" : "red"],
             ["Operating Cash Flow", fin.cf.operatingCF, "navy", true],
             ["− Capex (Investing)", fin.cf.investingCF, "red"],
-            ["Financing", fin.cf.financingCF, "navy"],
             ["Net Cash Flow", fin.cf.netCash, "navy", true],
-            ["Opening Cash", fin.cf.openingCash, "navy"],
             ["Closing Cash", fin.cf.closingCash, "purple", true],
           ]} />
-        )}
-      </div>
-
-      {/* Monthly phasing (per statement) */}
-      <Card>
-        <CardHeader
-          title={`Month-on-Month ${view === "bs" ? "Balance Sheet" : view === "cfs" ? "Cash Flow" : "P&L"}`}
-          tag={{ label: "auto-phased", tone: "navy" }}
+        </div>
+      ) : (
+        <EngineStatementTable
+          title={view === "pl" ? "AOP Profit & Loss" : view === "bs" ? "AOP Balance Sheet" : "AOP Cash Flow"}
+          fyLabel={fiscalYear}
+          view={view}
+          fin={fin}
+          opening={o}
         />
-        <CardBody className="p-0">
-          <div className="overflow-x-auto">
-            <table className="fm-table">
-              {view === "bs" ? (
-                <>
-                  <thead><tr><th>Month</th><th className="r">Cash</th><th className="r">Reserves</th><th className="r">Cum. Revenue</th><th className="r">Net Worth</th></tr></thead>
-                  <tbody>
-                    {fin.monthly.map((m, i) => {
-                      const reserves = o.reserves + m.cumPat;
-                      const cumRev = fin.monthly.slice(0, i + 1).reduce((s, x) => s + x.revenue, 0);
-                      return (
-                        <tr key={m.label}>
-                          <td className="font-semibold">{m.label}</td>
-                          <td className="r font-mono">{L(m.cash)}</td>
-                          <td className="r">{L(reserves)}</td>
-                          <td className="r text-ink-subtle">{L(cumRev)}</td>
-                          <td className="r font-semibold text-navy">{L(o.share_capital + reserves)}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </>
-              ) : view === "cfs" ? (
-                <>
-                  <thead><tr><th>Month</th><th className="r">PAT</th><th className="r">+ Dep.</th><th className="r">Operating CF</th><th className="r">Closing Cash</th></tr></thead>
-                  <tbody>
-                    {fin.monthly.map((m) => {
-                      const opcf = m.pat + m.depreciation;
-                      return (
-                        <tr key={m.label}>
-                          <td className="font-semibold">{m.label}</td>
-                          <td className="r">{L(m.pat)}</td>
-                          <td className="r text-ink-subtle">{L(m.depreciation)}</td>
-                          <td className="r font-semibold text-edgreen">{L(opcf)}</td>
-                          <td className="r font-mono font-semibold">{L(m.cash)}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </>
-              ) : (
-                <>
-                  <thead><tr><th>Month</th><th className="r">Revenue</th><th className="r">Opex</th><th className="r">EBITDA</th><th className="r">Dep.</th><th className="r">PAT</th><th className="r">Cum. PAT</th></tr></thead>
-                  <tbody>
-                    {fin.monthly.map((m) => (
-                      <tr key={m.label}>
-                        <td className="font-semibold">{m.label}</td>
-                        <td className="r">{L(m.revenue)}</td>
-                        <td className="r text-ink-subtle">{L(m.opex)}</td>
-                        <td className="r font-semibold text-edgreen">{L(m.ebitda)}</td>
-                        <td className="r text-ink-subtle">{L(m.depreciation)}</td>
-                        <td className={`r font-semibold ${m.pat >= 0 ? "text-navy" : "text-edred"}`}>{L(m.pat)}</td>
-                        <td className="r text-ink-subtle">{L(m.cumPat)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </>
-              )}
-            </table>
-          </div>
-        </CardBody>
-      </Card>
+      )}
 
       <p className="text-[11px] text-ink-muted">
         Generated from the frozen AOP (committed brokerage and cost) plus the opening balance sheet above. Receivables and payables
