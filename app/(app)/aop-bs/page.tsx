@@ -1,49 +1,29 @@
-import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import PageHeader from "@/components/ui/page-header";
-import AopStatementTable from "@/components/aop/aop-statement-table";
+import FinancialsClient from "@/components/aop/financials-client";
+import { loadAopFinancials } from "@/lib/aop-financials-data";
 
 export const dynamic = "force-dynamic";
 
-const SECTION_LABELS = {
-  NON_CURRENT_ASSETS: "Non-Current Assets",
-  CURRENT_ASSETS: "Current Assets",
-  TOTAL_ASSETS: "Total Assets",
-  EQUITY: "Equity",
-  NON_CURRENT_LIAB: "Non-Current Liabilities",
-  CURRENT_LIAB: "Current Liabilities",
-  TOTAL_LIAB_EQ: "Total Equity & Liabilities",
-};
-
 export default async function AOPBSPage() {
   await requireUser();
-  const supabase = createClient();
-
-  const { data: membership } = (await supabase
-    .from("org_members")
-    .select("org_id")
-    .limit(1)
-    .single()) as { data: { org_id: string } | null };
-  if (!membership) return null;
-
-  const { data: rows } = await supabase
-    .from("aop_statements")
-    .select("*")
-    .eq("org_id", membership.org_id)
-    .eq("statement", "bs")
-    .order("sort_order");
-
+  const d = await loadAopFinancials();
+  if (!d) return null;
+  if (d.isBH) redirect("/dashboard");
   return (
     <>
       <PageHeader
-        title="AOP — Balance Sheet"
-        subtitle="Edme – AOP Balance Sheet FY 2026-27 · Monthly progression"
+        title="AOP Balance Sheet"
+        subtitle={`${d.planFy} · auto-generated from opening balances + the AOP, phased month-on-month`}
       />
-      <AopStatementTable
-        title="🏛 AOP Balance Sheet"
-        fyLabel="FY 2026-27"
-        rows={(rows as any[]) ?? []}
-        sectionLabels={SECTION_LABELS}
+      <FinancialsClient
+        fiscalYear={d.planFy}
+        aop={d.aop}
+        initialOpening={d.opening}
+        weights={d.weights}
+        canEdit={d.canEdit}
+        view="bs"
       />
     </>
   );

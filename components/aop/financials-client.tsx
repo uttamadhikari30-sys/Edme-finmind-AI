@@ -28,12 +28,14 @@ export default function FinancialsClient({
   initialOpening,
   weights,
   canEdit,
+  view = "all",
 }: {
   fiscalYear: string;
   aop: AopInputs;
   initialOpening: Opening;
   weights: number[];
   canEdit: boolean;
+  view?: "all" | "pl" | "bs" | "cfs";
 }) {
   const [o, setO] = useState<Opening>(initialOpening);
   const [saving, setSaving] = useState(false);
@@ -103,86 +105,122 @@ export default function FinancialsClient({
         </CardBody>
       </Card>
 
-      {/* Three statements */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Statement title="AOP P&L" rows={[
-          ["Revenue (Brokerage)", fin.pl.revenue, "navy", true],
-          ["BH Cost (hiring + direct)", -fin.pl.bhCost, "red"],
-          ["Overhead (mid + back)", -fin.pl.overhead, "red"],
-          ["EBITDA", fin.pl.ebitda, "green", true],
-          ["Depreciation", -fin.pl.depreciation, "red"],
-          ["EBIT", fin.pl.ebit, "navy", true],
-          [`Tax (${o.tax_rate}%)`, -fin.pl.tax, "red"],
-          ["PAT", fin.pl.pat, "purple", true],
-        ]} />
-
-        <Statement title="Balance Sheet (Closing)" rows={[
-          ["Cash & bank", fin.bs.cash, "navy"],
-          ["Receivables", fin.bs.receivables, "navy"],
-          ["Other current assets", fin.bs.otherCA, "navy"],
-          ["Fixed assets (net)", fin.bs.fixedAssets, "navy"],
-          ["Total Assets", fin.bs.totalAssets, "green", true],
-          ["Payables", fin.bs.payables, "navy"],
-          ["Other current liab.", fin.bs.otherCL, "navy"],
-          ["Share capital", fin.bs.shareCapital, "navy"],
-          ["Reserves & surplus", fin.bs.reserves, "navy"],
-          ["Total Equity + Liab.", fin.bs.totalEquityLiab, "green", true],
-        ]} />
-
-        <Statement title="Cash Flow" rows={[
-          ["PAT", fin.cf.pat, "navy"],
-          ["+ Depreciation", fin.cf.depreciation, "green"],
-          ["− Δ Receivables", -fin.cf.deltaReceivables, fin.cf.deltaReceivables <= 0 ? "green" : "red"],
-          ["+ Δ Payables", fin.cf.deltaPayables, fin.cf.deltaPayables >= 0 ? "green" : "red"],
-          ["Operating Cash Flow", fin.cf.operatingCF, "navy", true],
-          ["− Capex (Investing)", fin.cf.investingCF, "red"],
-          ["Financing", fin.cf.financingCF, "navy"],
-          ["Net Cash Flow", fin.cf.netCash, "navy", true],
-          ["Opening Cash", fin.cf.openingCash, "navy"],
-          ["Closing Cash", fin.cf.closingCash, "purple", true],
-        ]} />
+      {/* Statement(s) */}
+      <div className={view === "all" ? "grid grid-cols-1 lg:grid-cols-3 gap-4" : "max-w-xl"}>
+        {(view === "all" || view === "pl") && (
+          <Statement title="AOP P&L" rows={[
+            ["Revenue (Brokerage)", fin.pl.revenue, "navy", true],
+            ["BH Cost (hiring + direct)", -fin.pl.bhCost, "red"],
+            ["Overhead (mid + back)", -fin.pl.overhead, "red"],
+            ["EBITDA", fin.pl.ebitda, "green", true],
+            ["Depreciation", -fin.pl.depreciation, "red"],
+            ["EBIT", fin.pl.ebit, "navy", true],
+            [`Tax (${o.tax_rate}%)`, -fin.pl.tax, "red"],
+            ["PAT", fin.pl.pat, "purple", true],
+          ]} />
+        )}
+        {(view === "all" || view === "bs") && (
+          <Statement title="Balance Sheet (Closing)" rows={[
+            ["Cash & bank", fin.bs.cash, "navy"],
+            ["Receivables", fin.bs.receivables, "navy"],
+            ["Other current assets", fin.bs.otherCA, "navy"],
+            ["Fixed assets (net)", fin.bs.fixedAssets, "navy"],
+            ["Total Assets", fin.bs.totalAssets, "green", true],
+            ["Payables", fin.bs.payables, "navy"],
+            ["Other current liab.", fin.bs.otherCL, "navy"],
+            ["Share capital", fin.bs.shareCapital, "navy"],
+            ["Reserves & surplus", fin.bs.reserves, "navy"],
+            ["Total Equity + Liab.", fin.bs.totalEquityLiab, "green", true],
+          ]} />
+        )}
+        {(view === "all" || view === "cfs") && (
+          <Statement title="Cash Flow" rows={[
+            ["PAT", fin.cf.pat, "navy"],
+            ["+ Depreciation", fin.cf.depreciation, "green"],
+            ["− Δ Receivables", -fin.cf.deltaReceivables, fin.cf.deltaReceivables <= 0 ? "green" : "red"],
+            ["+ Δ Payables", fin.cf.deltaPayables, fin.cf.deltaPayables >= 0 ? "green" : "red"],
+            ["Operating Cash Flow", fin.cf.operatingCF, "navy", true],
+            ["− Capex (Investing)", fin.cf.investingCF, "red"],
+            ["Financing", fin.cf.financingCF, "navy"],
+            ["Net Cash Flow", fin.cf.netCash, "navy", true],
+            ["Opening Cash", fin.cf.openingCash, "navy"],
+            ["Closing Cash", fin.cf.closingCash, "purple", true],
+          ]} />
+        )}
       </div>
 
-      {/* Monthly phasing */}
+      {/* Monthly phasing (per statement) */}
       <Card>
-        <CardHeader title="Month-on-Month AOP P&L" tag={{ label: "phased", tone: "navy" }} />
+        <CardHeader
+          title={`Month-on-Month ${view === "bs" ? "Balance Sheet" : view === "cfs" ? "Cash Flow" : "P&L"}`}
+          tag={{ label: "auto-phased", tone: "navy" }}
+        />
         <CardBody className="p-0">
           <div className="overflow-x-auto">
             <table className="fm-table">
-              <thead>
-                <tr>
-                  <th>Month</th>
-                  <th className="r">Revenue</th>
-                  <th className="r">Opex</th>
-                  <th className="r">EBITDA</th>
-                  <th className="r">Dep.</th>
-                  <th className="r">PAT</th>
-                  <th className="r">Cum. PAT</th>
-                  <th className="r">Cash</th>
-                </tr>
-              </thead>
-              <tbody>
-                {fin.monthly.map((m) => (
-                  <tr key={m.label}>
-                    <td className="font-semibold">{m.label}</td>
-                    <td className="r">{L(m.revenue)}</td>
-                    <td className="r text-ink-subtle">{L(m.opex)}</td>
-                    <td className="r font-semibold text-edgreen">{L(m.ebitda)}</td>
-                    <td className="r text-ink-subtle">{L(m.depreciation)}</td>
-                    <td className={`r font-semibold ${m.pat >= 0 ? "text-navy" : "text-edred"}`}>{L(m.pat)}</td>
-                    <td className="r text-ink-subtle">{L(m.cumPat)}</td>
-                    <td className="r font-mono">{L(m.cash)}</td>
-                  </tr>
-                ))}
-              </tbody>
+              {view === "bs" ? (
+                <>
+                  <thead><tr><th>Month</th><th className="r">Cash</th><th className="r">Reserves</th><th className="r">Cum. Revenue</th><th className="r">Net Worth</th></tr></thead>
+                  <tbody>
+                    {fin.monthly.map((m, i) => {
+                      const reserves = o.reserves + m.cumPat;
+                      const cumRev = fin.monthly.slice(0, i + 1).reduce((s, x) => s + x.revenue, 0);
+                      return (
+                        <tr key={m.label}>
+                          <td className="font-semibold">{m.label}</td>
+                          <td className="r font-mono">{L(m.cash)}</td>
+                          <td className="r">{L(reserves)}</td>
+                          <td className="r text-ink-subtle">{L(cumRev)}</td>
+                          <td className="r font-semibold text-navy">{L(o.share_capital + reserves)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </>
+              ) : view === "cfs" ? (
+                <>
+                  <thead><tr><th>Month</th><th className="r">PAT</th><th className="r">+ Dep.</th><th className="r">Operating CF</th><th className="r">Closing Cash</th></tr></thead>
+                  <tbody>
+                    {fin.monthly.map((m) => {
+                      const opcf = m.pat + m.depreciation;
+                      return (
+                        <tr key={m.label}>
+                          <td className="font-semibold">{m.label}</td>
+                          <td className="r">{L(m.pat)}</td>
+                          <td className="r text-ink-subtle">{L(m.depreciation)}</td>
+                          <td className="r font-semibold text-edgreen">{L(opcf)}</td>
+                          <td className="r font-mono font-semibold">{L(m.cash)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </>
+              ) : (
+                <>
+                  <thead><tr><th>Month</th><th className="r">Revenue</th><th className="r">Opex</th><th className="r">EBITDA</th><th className="r">Dep.</th><th className="r">PAT</th><th className="r">Cum. PAT</th></tr></thead>
+                  <tbody>
+                    {fin.monthly.map((m) => (
+                      <tr key={m.label}>
+                        <td className="font-semibold">{m.label}</td>
+                        <td className="r">{L(m.revenue)}</td>
+                        <td className="r text-ink-subtle">{L(m.opex)}</td>
+                        <td className="r font-semibold text-edgreen">{L(m.ebitda)}</td>
+                        <td className="r text-ink-subtle">{L(m.depreciation)}</td>
+                        <td className={`r font-semibold ${m.pat >= 0 ? "text-navy" : "text-edred"}`}>{L(m.pat)}</td>
+                        <td className="r text-ink-subtle">{L(m.cumPat)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </>
+              )}
             </table>
           </div>
         </CardBody>
       </Card>
 
       <p className="text-[11px] text-ink-muted">
-        Statements are generated from the frozen AOP (committed brokerage and cost) plus the opening balance sheet. Receivables and payables
-        use your DSO/DPO assumptions; cash is the balancing figure. Monthly phasing spreads the annual plan across the year (equal by default).
+        Generated from the frozen AOP (committed brokerage and cost) plus the opening balance sheet above. Receivables and payables
+        use your DSO/DPO assumptions; cash is the balancing figure. The month-on-month view auto-phases the annual plan across the year.
       </p>
     </div>
   );
