@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { parseCSV, pick, downloadText } from "@/lib/csv";
 
 export type CostLine = {
   category: "hiring" | "direct";
@@ -69,6 +70,48 @@ export default function CostPlannerClient({
   const aopProfit = committedBrokerage - fullCost;
   const margin = committedBrokerage > 0 ? (aopProfit / committedBrokerage) * 100 : 0;
 
+  // ---- CSV upload (Cost plan) --------------------------------------------
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  function downloadTemplate() {
+    const header = "Category,Label,Headcount,CTC,Amount";
+    const sample = [
+      "hiring,Relationship Manager,2,900000,",
+      "hiring,Ops Executive,1,600000,",
+      "direct,Branch rent,,,1200000",
+      "direct,Travel,,,350000",
+    ].join("\n");
+    downloadText("aop-cost-template.csv", `${header}\n${sample}\n\n# Category: hiring | direct\n# hiring: Amount = Headcount x CTC (leave Amount blank). direct: fill Amount.`);
+  }
+
+  function handleUpload(file: File) {
+    setUploading(true);
+    setMsg(null);
+    file.text().then((text) => {
+      try {
+        const rows = parseCSV(text);
+        const imported: CostLine[] = [];
+        rows.forEach((r) => {
+          const cat = pick(r, "category").toLowerCase();
+          if (cat !== "hiring" && cat !== "direct") return;
+          const headcount = Number(pick(r, "headcount", "count")) || 0;
+          const ctc = Number(pick(r, "ctc", "ctc_annual", "annual ctc")) || 0;
+          const amount = cat === "hiring" ? headcount * ctc : Number(pick(r, "amount")) || 0;
+          imported.push({ category: cat, label: pick(r, "label", "head", "cost head"), headcount, ctc_annual: ctc, amount });
+        });
+        if (!imported.length) { setMsg("⚠ No valid hiring/direct rows found."); return; }
+        setLines((ls) => [...ls.filter((l) => l.label || l.amount || l.headcount), ...imported]);
+        setMsg(`✓ Imported ${imported.length} cost line${imported.length === 1 ? "" : "s"} — click Save cost plan to persist`);
+      } catch (e: any) {
+        setMsg(`⚠ ${e?.message ?? "Could not read the file"}`);
+      } finally {
+        setUploading(false);
+        if (fileRef.current) fileRef.current.value = "";
+      }
+    });
+  }
+
   async function save() {
     setSaving(true);
     setMsg(null);
@@ -109,10 +152,21 @@ export default function CostPlannerClient({
           title={`${verticalName} — My Cost Plan (${fiscalYear})`}
           tag={{ label: `${totals.heads} new hires`, tone: "navy" }}
           right={
-            <button onClick={save} disabled={saving}
-              className="px-4 py-1.5 rounded-lg bg-edred text-white text-[12px] font-semibold hover:bg-edred-600 disabled:opacity-60">
-              {saving ? "Saving…" : "Save cost plan"}
-            </button>
+            <div className="flex items-center gap-2">
+              <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); }} />
+              <button onClick={downloadTemplate}
+                className="px-2.5 py-1.5 rounded-lg border border-[var(--border)] text-ink-muted text-[12px] font-semibold hover:bg-bg-alt"
+                title="Download CSV template">⬇ Template</button>
+              <button onClick={() => fileRef.current?.click()} disabled={uploading}
+                className="px-3 py-1.5 rounded-lg border border-navy/30 text-navy text-[12px] font-semibold hover:bg-navy/5 disabled:opacity-60">
+                {uploading ? "Importing…" : "⬆ Upload CSV"}
+              </button>
+              <button onClick={save} disabled={saving}
+                className="px-4 py-1.5 rounded-lg bg-edred text-white text-[12px] font-semibold hover:bg-edred-600 disabled:opacity-60">
+                {saving ? "Saving…" : "Save cost plan"}
+              </button>
+            </div>
           }
         />
         <CardBody className="space-y-5">

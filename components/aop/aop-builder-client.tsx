@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { parseCSV, pick, downloadText } from "@/lib/csv";
 
 export type PlanLine = {
   client_id: string;
@@ -113,6 +114,78 @@ export default function AopBuilderClient({
     setMsg(null);
   }
 
+  // ---- CSV upload (Revenue plan) -----------------------------------------
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  function downloadTemplate() {
+    const header = "Client,Product,Basis,Premium,Brokerage%,Conversion%";
+    const sample = [
+      "Reliance Industries,FIRE,renewal,4500000,11.5,100",
+      "Tata Motors,MOTOR,renewal,3800000,15,100",
+      "New Prospect Pvt Ltd,GMC,new,1200000,10,65",
+    ].join("\n");
+    const codes = products.map((p) => p.code).join(" | ");
+    downloadText("aop-revenue-template.csv", `${header}\n${sample}\n\n# Product codes: ${codes}\n# Basis: new | renewal`);
+  }
+
+  async function handleUpload(file: File) {
+    setUploading(true);
+    setMsg(null);
+    try {
+      const rows = parseCSV(await file.text()).filter((r) => pick(r, "client", "client name", "name"));
+      if (!rows.length) { setMsg("⚠ No data rows found in the CSV."); return; }
+
+      const codeToId = new Map(products.map((p) => [p.code.toUpperCase(), p]));
+      // Resolve (or create) each unique client in the master
+      const names = [...new Set(rows.map((r) => pick(r, "client", "client name", "name")))];
+      const nameToId = new Map<string, { id: string; name: string }>();
+      for (const name of names) {
+        const res = await fetch("/api/aop/add-client", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ client_name: name }),
+        });
+        const data = await res.json();
+        if (res.ok) nameToId.set(name, { id: data.id, name: data.name });
+      }
+
+      const next = [...lines];
+      const seen = new Set(next.map((l) => `${l.client_id}|${l.product_line_id}`));
+      let added = 0, skipped = 0;
+      rows.forEach((r) => {
+        const cname = pick(r, "client", "client name", "name");
+        const prod = codeToId.get(pick(r, "product", "product code").toUpperCase());
+        const client = nameToId.get(cname);
+        if (!prod || !client) { skipped++; return; }
+        const key = `${client.id}|${prod.id}`;
+        if (seen.has(key)) { skipped++; return; }
+        const basis = pick(r, "basis").toLowerCase() === "new" ? "new" : "renewal";
+        next.unshift({
+          client_id: client.id,
+          product_line_id: prod.id,
+          client: client.name,
+          product: prod.code,
+          basis,
+          last_year_premium: 0,
+          planned_premium: Number(pick(r, "premium")) || 0,
+          brokerage_pct: Number(pick(r, "brokerage%", "brokerage", "brok%")) || prod.brokerage_pct,
+          conversion_pct: Number(pick(r, "conversion%", "conversion", "conv%")) || (basis === "new" ? 70 : 100),
+          included: true,
+        });
+        seen.add(key);
+        added++;
+      });
+      setLines(next);
+      setMsg(`✓ Imported ${added} line${added === 1 ? "" : "s"}${skipped ? `, skipped ${skipped}` : ""} — click Save AOP plan to persist`);
+    } catch (e: any) {
+      setMsg(`⚠ ${e?.message ?? "Could not read the file"}`);
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
   async function save() {
     setSaving(true);
     setMsg(null);
@@ -148,6 +221,22 @@ export default function AopBuilderClient({
           tag={{ label: `${lines.length} lines`, tone: "navy" }}
           right={
             <div className="flex items-center gap-2">
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".csv,text/csv"
+                className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); }}
+              />
+              <button onClick={downloadTemplate}
+                className="px-2.5 py-1.5 rounded-lg border border-[var(--border)] text-ink-muted text-[12px] font-semibold hover:bg-bg-alt"
+                title="Download CSV template">
+                ⬇ Template
+              </button>
+              <button onClick={() => fileRef.current?.click()} disabled={uploading}
+                className="px-3 py-1.5 rounded-lg border border-navy/30 text-navy text-[12px] font-semibold hover:bg-navy/5 disabled:opacity-60">
+                {uploading ? "Importing…" : "⬆ Upload CSV"}
+              </button>
               <button
                 onClick={() => { setShowAdd((s) => !s); setAddMsg(null); }}
                 className="px-3 py-1.5 rounded-lg border border-navy/30 text-navy text-[12px] font-semibold hover:bg-navy/5"

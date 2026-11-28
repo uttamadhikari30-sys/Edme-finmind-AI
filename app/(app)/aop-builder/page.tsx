@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/auth";
 import PageHeader from "@/components/ui/page-header";
 import AopBuilderClient, { type PlanLine } from "@/components/aop/aop-builder-client";
 import CostPlannerClient, { type CostLine } from "@/components/aop/cost-planner-client";
+import AIInsightsCard from "@/components/ai/ai-insights-card";
 
 const CONV_THRESHOLD = 60;
 
@@ -167,6 +168,33 @@ export default async function AopBuilderPage() {
     .maybeSingle();
   const overheadFrozen = !!(oh as any)?.frozen;
 
+  // ---- AI advisor context (plan summary) ---------------------------------
+  const plannedPremium = lines.reduce((s, l) => s + (l.included ? l.planned_premium : 0), 0);
+  const pipelineBrok = lines.reduce((s, l) => {
+    const counts = l.basis === "renewal" || l.conversion_pct >= CONV_THRESHOLD;
+    return !counts && l.included ? s + (l.planned_premium * l.brokerage_pct) / 100 : s;
+  }, 0);
+  const lyBrok = lines.reduce((s, l) => s + (l.last_year_premium * l.brokerage_pct) / 100, 0);
+  const growthPct = lyBrok > 0 ? ((committedBrokerage - lyBrok) / lyBrok) * 100 : 0;
+  const myCost = costLines.reduce((s, c) => s + c.amount, 0);
+  const Lk = (v: number) => +(v / 1e5).toFixed(1);
+  const aiContext = {
+    org: "Edme Insurance Brokers Limited",
+    vertical: bu.name,
+    plan_fy: PLAN_FY,
+    basis_fy: BASIS_FY,
+    committed_brokerage_lakh: Lk(committedBrokerage),
+    planned_premium_lakh: Lk(plannedPremium),
+    pipeline_brokerage_lakh: Lk(pipelineBrok),
+    growth_vs_last_year_pct: +growthPct.toFixed(1),
+    client_lines: lines.length,
+    new_business_lines: lines.filter((l) => l.basis === "new").length,
+    renewal_lines: lines.filter((l) => l.basis === "renewal").length,
+    my_cost_lakh: Lk(myCost),
+    overhead_frozen: overheadFrozen,
+    conversion_threshold_pct: CONV_THRESHOLD,
+  };
+
   return (
     <>
       <PageHeader
@@ -194,6 +222,10 @@ export default async function AopBuilderPage() {
           overheadFrozen={overheadFrozen}
           initialLines={costLines}
         />
+      </div>
+
+      <div className="mt-6">
+        <AIInsightsCard page="aop-builder" density="wide" title="🤖 FINMIND AOP Advisor" context={aiContext} />
       </div>
     </>
   );

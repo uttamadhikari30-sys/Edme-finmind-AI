@@ -68,6 +68,13 @@ const FALLBACK_INSIGHTS: Record<string, any[]> = {
     { icon: "📊", tone: "info", title: "Forecast quality", body: "3-month moving average is solid for run-rate. Strip one-time wins from base for cleaner LE." },
     { icon: "🎯", tone: "opportunity", title: "H2 push", body: "Q3 (Oct–Dec) corporate renewals + Q4 (Jan–Mar) new business = biggest LE upside window." },
   ],
+  "aop-builder": [
+    { icon: "🎯", tone: "opportunity", title: "Pipeline conversion", body: "Lift new-business pipeline above the 60% threshold to convert it into committed brokerage before freeze." },
+    { icon: "💡", tone: "good", title: "Renewal base", body: "Price renewals at last year's premium × 1.1 minimum. Renewal brokerage always counts toward AOP." },
+    { icon: "📊", tone: "info", title: "Growth benchmark", body: "Indian brokers target 15–20% YoY brokerage growth. Check your plan's growth vs last year's actuals." },
+    { icon: "🛡", tone: "protective", title: "Client concentration", body: "No single client should exceed 15% of your vertical's brokerage. Spread the book to de-risk." },
+    { icon: "💰", tone: "info", title: "Cost-to-income", body: "Keep your own cost (hiring + direct) under 45% of committed brokerage so overhead still leaves a healthy margin." },
+  ],
 };
 
 export async function POST(req: NextRequest) {
