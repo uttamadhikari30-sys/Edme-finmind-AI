@@ -64,8 +64,8 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="auth-card auth-card-in shadow-[0_30px_80px_-20px_rgba(28,54,135,0.35)]">
-      <div className="p-8 lg:p-9">
+    <div className="w-full">
+      <div>
         {/* Mobile-only brand (left panel is hidden on small screens) */}
         <div className="lg:hidden text-center mb-6">
           <div className="font-serif text-[34px] font-bold leading-none text-navy">
